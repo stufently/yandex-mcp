@@ -5,6 +5,8 @@
 ### Added (update)
 - yandex-metrika-mcp: `create-counter` and `delete-counter` tools (Management API write operations)
 - yandex-metrika-mcp: `managementRequestPost` and `managementRequestDelete` helper functions
+- GitHub Actions: CI workflow (lint per push/PR), publish workflow (npm on tag)
+- GitHub issue templates: bug report, feature request
 
 ### Added
 - Initial project setup: monorepo with 4 MCP servers

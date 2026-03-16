@@ -4,7 +4,7 @@
 
 - [ ] Upgrade Node.js to 26.x when released (~April-May 2026), update engines in all package.json
 - [ ] Publish packages to npm after testing with real API keys
-- [ ] Add CI/CD pipeline (GitHub Actions)
+- [x] Add CI/CD pipeline (GitHub Actions)
 - [ ] Add integration tests with real API keys
 - [ ] Harden auth flow: add state, PKCE, explicit redirect_uri, explicit scopes per service
 
