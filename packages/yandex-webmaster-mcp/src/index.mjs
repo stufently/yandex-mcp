@@ -127,8 +127,8 @@ async function runServer() {
     const params = {};
     const vFrom = validateDate(dateFrom);
     const vTo = validateDate(dateTo);
-    if (vFrom) params.date_from = new Date(vFrom).toISOString();
-    if (vTo) params.date_to = new Date(vTo).toISOString();
+    if (vFrom) params.date_from = new Date(`${vFrom}T00:00:00Z`).toISOString();
+    if (vTo) params.date_to = new Date(`${vTo}T00:00:00Z`).toISOString();
     return params;
   }
 

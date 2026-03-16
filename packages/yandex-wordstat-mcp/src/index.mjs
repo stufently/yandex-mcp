@@ -328,8 +328,8 @@ async function runServer() {
       if (dynamics.length >= 2) {
         const first = dynamics[0]?.count || 0;
         const last = dynamics[dynamics.length - 1]?.count || 0;
-        const change = first > 0 ? (((last - first) / first) * 100).toFixed(1) : 0;
-        trend = ` | Trend: ${change > 0 ? '+' : ''}${change}%`;
+        const changeNum = first > 0 ? ((last - first) / first) * 100 : 0;
+        trend = ` | Trend: ${changeNum > 0 ? '+' : ''}${changeNum.toFixed(1)}%`;
       }
 
       const summary =
