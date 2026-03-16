@@ -42,7 +42,12 @@ async function runServer() {
           throw new Error(`API error (${response.status}) after ${maxRetries} retries: ${text.substring(0, 500)}`);
         }
         const retryAfter = response.headers.get('Retry-After');
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.min(1000 * 2 ** attempt, 10000);
+        const parsed = retryAfter
+          ? Number.isFinite(Number(retryAfter))
+            ? Number(retryAfter) * 1000
+            : Math.max(0, new Date(retryAfter).getTime() - Date.now())
+          : 0;
+        const delay = parsed > 0 ? Math.min(parsed, 30000) : Math.min(1000 * 2 ** attempt, 10000);
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
@@ -162,8 +167,14 @@ async function runServer() {
     },
     async ({ counter_id }) => {
       const data = await managementRequest(`/counter/${counter_id}`);
+      const counter = data.counter || data;
       return {
-        content: [{ type: 'text', text: `Counter ${counter_id}: ${data.name || 'N/A'} (${data.site || 'N/A'})` }],
+        content: [
+          {
+            type: 'text',
+            text: `Counter ${counter_id}: ${counter.name || 'N/A'} (${counter.site || counter.site2?.domain || 'N/A'})`,
+          },
+        ],
         structuredContent: data,
       };
     },

@@ -31,7 +31,12 @@ async function runServer() {
           throw new Error(`API error (${response.status}) after ${maxRetries} retries: ${text.substring(0, 500)}`);
         }
         const retryAfter = response.headers.get('Retry-After');
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.min(1000 * 2 ** attempt, 10000);
+        const parsed = retryAfter
+          ? Number.isFinite(Number(retryAfter))
+            ? Number(retryAfter) * 1000
+            : Math.max(0, new Date(retryAfter).getTime() - Date.now())
+          : 0;
+        const delay = parsed > 0 ? Math.min(parsed, 30000) : Math.min(1000 * 2 ** attempt, 10000);
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
