@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "yandex-search": {
+      "command": "node",
+      "args": ["--env-file=.env", "packages/yandex-search-mcp/src/index.mjs"]
+    },
+    "yandex-wordstat": {
+      "command": "node",
+      "args": ["--env-file=.env", "packages/yandex-wordstat-mcp/src/index.mjs"]
+    },
+    "yandex-webmaster": {
+      "command": "node",
+      "args": ["--env-file=.env", "packages/yandex-webmaster-mcp/src/index.mjs"]
+    },
+    "yandex-metrika": {
+      "command": "node",
+      "args": ["--env-file=.env", "packages/yandex-metrika-mcp/src/index.mjs"]
+    }
+  }
+}

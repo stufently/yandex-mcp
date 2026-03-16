@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "yandex-search": {
+      "command": "npx",
+      "args": ["-y", "yandex-search-mcp"],
+      "env": {
+        "YANDEX_SEARCH_API_KEY": "${YANDEX_SEARCH_API_KEY}",
+        "YANDEX_FOLDER_ID": "${YANDEX_FOLDER_ID}"
+      }
+    },
+    "yandex-wordstat": {
+      "command": "npx",
+      "args": ["-y", "yandex-wordstat-mcp"],
+      "env": { "YANDEX_WORDSTAT_TOKEN": "${YANDEX_WORDSTAT_TOKEN}" }
+    },
+    "yandex-webmaster": {
+      "command": "npx",
+      "args": ["-y", "yandex-webmaster-mcp"],
+      "env": { "YANDEX_WEBMASTER_TOKEN": "${YANDEX_WEBMASTER_TOKEN}" }
+    },
+    "yandex-metrika": {
+      "command": "npx",
+      "args": ["-y", "yandex-metrika-mcp"],
+      "env": { "YANDEX_METRIKA_TOKEN": "${YANDEX_METRIKA_TOKEN}" }
+    }
+  }
+}

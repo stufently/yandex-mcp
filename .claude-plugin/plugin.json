@@ -1,0 +1,9 @@
+{
+  "name": "yandex-mcp",
+  "version": "1.0.0",
+  "description": "Yandex tools for Russian/CIS markets: search, keyword research (Wordstat), webmaster analytics, and Metrika",
+  "license": "MIT",
+  "keywords": ["yandex", "seo", "search", "wordstat", "webmaster", "metrika", "russia", "mcp"],
+  "mcpServers": "../plugin.mcp.json",
+  "skills": "../.claude/skills/"
+}
