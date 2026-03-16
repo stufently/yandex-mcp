@@ -103,6 +103,39 @@ async function runServer() {
     return safeJsonParse(response);
   }
 
+  async function managementRequestPost(endpoint, body) {
+    const url = `${MANAGEMENT_API}${endpoint}`;
+    const response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `OAuth ${getToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Metrika API error (${response.status}): ${errorText.substring(0, 500)}`);
+    }
+    return safeJsonParse(response);
+  }
+
+  async function managementRequestDelete(endpoint) {
+    const url = `${MANAGEMENT_API}${endpoint}`;
+    const response = await fetchWithRetry(url, {
+      method: 'DELETE',
+      headers: { Authorization: `OAuth ${getToken()}` },
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Metrika API error (${response.status}): ${errorText.substring(0, 500)}`);
+    }
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      return safeJsonParse(response);
+    }
+    return { success: true };
+  }
+
   async function statRequest(params) {
     const url = new URL(`${STAT_API}/data`);
     for (const [key, value] of Object.entries(params)) {
@@ -145,7 +178,7 @@ async function runServer() {
 
   const server = new McpServer({ name: 'yandex-metrika', version: '1.0.0' });
 
-  // === Management (3 tools) ===
+  // === Management (5 tools) ===
 
   // 1. get-counters
   server.tool('get-counters', 'List all Metrika counters (sites).', {}, async () => {
@@ -198,9 +231,67 @@ async function runServer() {
     },
   );
 
+  // 4. create-counter
+  server.tool(
+    'create-counter',
+    'Create a new Metrika counter (add a site).',
+    {
+      name: z.string().describe('Counter name'),
+      site: z.string().describe('Site domain (e.g. "example.com")'),
+      mirrors: z.array(z.string()).optional().describe('Mirror domains'),
+      time_zone_name: z.string().optional().describe('Timezone (e.g. "Europe/Moscow")'),
+      gdpr_agreement_accepted: z.boolean().optional().describe('GDPR agreement accepted (required for EU)'),
+    },
+    async ({ name, site, mirrors, time_zone_name, gdpr_agreement_accepted }) => {
+      const counterData = { name, site };
+      if (mirrors) counterData.mirrors = mirrors;
+      if (time_zone_name) counterData.time_zone_name = time_zone_name;
+
+      const params = {};
+      if (gdpr_agreement_accepted) params.gdpr_agreement_accepted = 1;
+
+      const qs = Object.keys(params).length
+        ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()
+        : '';
+
+      const data = await managementRequestPost(`/counters${qs}`, { counter: counterData });
+      const counter = data.counter || data;
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Counter created! ID: ${counter.id}, Name: ${counter.name}, Site: ${counter.site}`,
+          },
+        ],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // 5. delete-counter
+  server.tool(
+    'delete-counter',
+    'Delete a Metrika counter.',
+    {
+      counter_id: z.number().describe('Counter ID to delete'),
+    },
+    async ({ counter_id }) => {
+      const data = await managementRequestDelete(`/counter/${counter_id}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Counter ${counter_id} deleted successfully.`,
+          },
+        ],
+        structuredContent: data,
+      };
+    },
+  );
+
   // === Reporting (6 tools) ===
 
-  // 4. get-traffic-summary
+  // 6. get-traffic-summary
   server.tool(
     'get-traffic-summary',
     'Get traffic summary: visits, users, pageviews, bounce rate, avg duration.',
@@ -236,7 +327,7 @@ async function runServer() {
     },
   );
 
-  // 5. get-traffic-sources
+  // 7. get-traffic-sources
   server.tool(
     'get-traffic-sources',
     'Get traffic breakdown by source.',
@@ -267,7 +358,7 @@ async function runServer() {
     },
   );
 
-  // 6. get-geography
+  // 8. get-geography
   server.tool(
     'get-geography',
     'Get traffic breakdown by country and city.',
@@ -297,7 +388,7 @@ async function runServer() {
     },
   );
 
-  // 7. get-devices
+  // 9. get-devices
   server.tool(
     'get-devices',
     'Get traffic breakdown by device, browser, or OS.',
@@ -333,7 +424,7 @@ async function runServer() {
     },
   );
 
-  // 8. get-popular-pages
+  // 10. get-popular-pages
   server.tool(
     'get-popular-pages',
     'Get most visited pages.',
@@ -364,7 +455,7 @@ async function runServer() {
     },
   );
 
-  // 9. get-search-phrases
+  // 11. get-search-phrases
   server.tool(
     'get-search-phrases',
     'Get top search phrases driving traffic.',
@@ -394,7 +485,7 @@ async function runServer() {
     },
   );
 
-  // 10. get-report (custom)
+  // 12. get-report (custom)
   server.tool(
     'get-report',
     'Run a custom Metrika report with arbitrary metrics and dimensions.',

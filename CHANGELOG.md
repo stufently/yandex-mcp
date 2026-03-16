@@ -2,6 +2,10 @@
 
 ## 2026-03-16
 
+### Added (update)
+- yandex-metrika-mcp: `create-counter` and `delete-counter` tools (Management API write operations)
+- yandex-metrika-mcp: `managementRequestPost` and `managementRequestDelete` helper functions
+
 ### Added
 - Initial project setup: monorepo with 4 MCP servers
 - yandex-search-mcp: 1 tool (search)

@@ -46,15 +46,17 @@ This opens a browser for Yandex OAuth authorization (scope: `metrika:read`) and 
 
 Note: The Metrika API uses `Authorization: OAuth {token}` (not Bearer).
 
-## Tool Reference (10 tools)
+## Tool Reference (12 tools)
 
-### Management (3)
+### Management (5)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-counters` | List all Metrika counters (sites) | -- |
 | `get-counter` | Get details for a specific counter | `counter_id` |
 | `get-goals` | Get goals for a counter | `counter_id` |
+| `create-counter` | Create a new counter (add a site) | `name`, `site`, `mirrors?`, `time_zone_name?`, `gdpr_agreement_accepted?` |
+| `delete-counter` | Delete a counter | `counter_id` |
 
 ### Reporting (6)
 

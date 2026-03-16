@@ -23,3 +23,4 @@
 | Fix Opus review: UTC dates, type coercion | 2026-03-16 |
 | Fix Codex review #3: metrika get-counter response shape, Retry-After date parsing | 2026-03-16 |
 | Add README.md for root and all 4 packages | 2026-03-16 |
+| Add create-counter and delete-counter to yandex-metrika-mcp | 2026-03-16 |
