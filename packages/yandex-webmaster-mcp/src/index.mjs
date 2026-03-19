@@ -121,6 +121,28 @@ async function runServer() {
     return safeJsonParse(response);
   }
 
+  async function apiRequestPost(endpoint, body) {
+    const url = `${API_BASE}${endpoint}`;
+    const response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `OAuth ${getToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        cachedUserId = null;
+      }
+      const errorText = await response.text();
+      throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
+    }
+
+    return safeJsonParse(response);
+  }
+
   // --- URL builder helpers ---
 
   async function hostUrl(hostId, suffix = '') {
@@ -662,6 +684,78 @@ async function runServer() {
           },
         ],
         structuredContent: data,
+      };
+    },
+  );
+
+  // === Host Management (2 tools) ===
+
+  // add-host
+  server.tool(
+    'add-host',
+    'Add a new site (host) to Yandex Webmaster. The host_url must include protocol (e.g. "https://example.com"). After adding, the host needs verification.',
+    {
+      host_url: z.string().describe('Site URL with protocol (e.g. "https://example.com")'),
+    },
+    async ({ host_url }) => {
+      const userId = await getUserId();
+      const data = await apiRequestPost(`/user/${userId}/hosts`, { host_url });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Host added!\nHost ID: ${data.host_id}\nURL: ${data.unicode_host_url || host_url}\nVerified: ${data.verified || false}`,
+          },
+        ],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // verify-host
+  server.tool(
+    'verify-host',
+    'Get verification status and available verification methods for a host. Use after add-host to check what verification is needed.',
+    {
+      host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
+    },
+    async ({ host_id }) => {
+      const data = await apiRequest(await hostUrl(host_id, '/verification'));
+      const methods = (data.applicable_verifiers || []).map((v) => v.verifier_type).join(', ');
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Verified: ${data.verified || false}\nApplicable methods: ${methods || 'none'}`,
+          },
+        ],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // delete-host
+  server.tool(
+    'delete-host',
+    'Remove a host from Yandex Webmaster.',
+    {
+      host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
+    },
+    async ({ host_id }) => {
+      const userId = await getUserId();
+      const url = `${API_BASE}/user/${userId}/hosts/${host_id}`;
+      const response = await fetchWithRetry(url, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `OAuth ${getToken()}`,
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
+      }
+      return {
+        content: [{ type: 'text', text: `Host ${host_id} deleted.` }],
       };
     },
   );
