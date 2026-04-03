@@ -10,15 +10,12 @@ async function runServer() {
   // --- Config ---
 
   const SANDBOX = process.env.YANDEX_DIRECT_SANDBOX === 'true';
-  const API_BASE = SANDBOX
-    ? 'https://api-sandbox.direct.yandex.com/json/v5'
-    : 'https://api.direct.yandex.com/json/v5';
+  const API_BASE = SANDBOX ? 'https://api-sandbox.direct.yandex.com/json/v5' : 'https://api.direct.yandex.com/json/v5';
   const CLIENT_LOGIN = process.env.YANDEX_DIRECT_CLIENT_LOGIN || '';
 
   function getToken() {
     const token = process.env.YANDEX_DIRECT_TOKEN;
-    if (!token)
-      throw new Error('YANDEX_DIRECT_TOKEN is required. Set the environment variable with your OAuth token.');
+    if (!token) throw new Error('YANDEX_DIRECT_TOKEN is required. Set the environment variable with your OAuth token.');
     return token;
   }
 
@@ -139,7 +136,7 @@ async function runServer() {
 
       if (response.status === 200) {
         // Report is ready
-        let tsv = await response.text();
+        const tsv = await response.text();
         return parseTsv(tsv);
       }
 
@@ -221,12 +218,7 @@ async function runServer() {
       }
     }
 
-    schema.limit = z
-      .number()
-      .min(1)
-      .max(10000)
-      .optional()
-      .describe('Page limit (default 100, max 10000)');
+    schema.limit = z.number().min(1).max(10000).optional().describe('Page limit (default 100, max 10000)');
     schema.offset = z.number().min(0).optional().describe('Page offset (default 0)');
 
     server.tool(toolName, description, schema, async (params) => {
@@ -406,8 +398,7 @@ async function runServer() {
     {
       Ids: 'Filter by campaign IDs',
       States: 'Filter by states: CONVERTED, ENDED, OFF, ON, SUSPENDED, ARCHIVED',
-      Statuses:
-        'Filter by statuses: ACCEPTED, DRAFT, MODERATION, REJECTED',
+      Statuses: 'Filter by statuses: ACCEPTED, DRAFT, MODERATION, REJECTED',
       Types:
         'Filter by types: TEXT_CAMPAIGN, DYNAMIC_TEXT_CAMPAIGN, MOBILE_APP_CAMPAIGN, CPM_BANNER_CAMPAIGN, SMART_CAMPAIGN, UNIFIED_CAMPAIGN',
     },
@@ -576,9 +567,7 @@ async function runServer() {
     {
       bids_json: z
         .string()
-        .describe(
-          'JSON array of bid objects, e.g. [{"KeywordId":12345,"SearchBid":30000000,"NetworkBid":10000000}]',
-        ),
+        .describe('JSON array of bid objects, e.g. [{"KeywordId":12345,"SearchBid":30000000,"NetworkBid":10000000}]'),
     },
     async ({ bids_json }) => {
       let bids;
@@ -670,9 +659,7 @@ async function runServer() {
     {
       modifiers_json: z
         .string()
-        .describe(
-          'JSON array of bid modifier update objects, e.g. [{"Id":11111,"BidModifier":120}]',
-        ),
+        .describe('JSON array of bid modifier update objects, e.g. [{"Id":11111,"BidModifier":120}]'),
     },
     async ({ modifiers_json }) => {
       let modifiers;
@@ -795,14 +782,8 @@ async function runServer() {
           'AUTO',
         ])
         .describe('Date range type. Use CUSTOM_DATE with date_from/date_to.'),
-      date_from: z
-        .string()
-        .optional()
-        .describe('Start date YYYY-MM-DD (required when date_range_type=CUSTOM_DATE)'),
-      date_to: z
-        .string()
-        .optional()
-        .describe('End date YYYY-MM-DD (required when date_range_type=CUSTOM_DATE)'),
+      date_from: z.string().optional().describe('Start date YYYY-MM-DD (required when date_range_type=CUSTOM_DATE)'),
+      date_to: z.string().optional().describe('End date YYYY-MM-DD (required when date_range_type=CUSTOM_DATE)'),
       filter_json: z
         .string()
         .optional()
@@ -913,9 +894,7 @@ async function runServer() {
     'get_clients',
     'Get client info (for agency accounts). Common FieldNames: Login, ClientId, ClientInfo, AccountQuality, Archived, CountryId, CreatedAt, Currency, Grants, Notification, OverdraftSumAvailable, Phone, Representatives, Restrictions, Settings, Type.',
     {
-      field_names: z
-        .array(z.string())
-        .describe('Fields to return, e.g. ["Login","ClientId","ClientInfo","Currency"]'),
+      field_names: z.array(z.string()).describe('Fields to return, e.g. ["Login","ClientId","ClientInfo","Currency"]'),
     },
     async ({ field_names }) => {
       const data = await apiRequest('clients', 'get', {
