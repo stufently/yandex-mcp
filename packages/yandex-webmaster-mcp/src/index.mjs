@@ -688,6 +688,64 @@ async function runServer() {
     },
   );
 
+  // 25. add-recrawl-url
+  server.tool(
+    'add-recrawl-url',
+    'Enqueue a URL for Yandex re-crawl. Daily quota applies (check get-recrawl-quota). Returns task_id.',
+    {
+      host_id: z.string().describe('Host ID (e.g. "https:example.com:443")'),
+      url: z.string().describe('Full URL on the host to re-crawl (must start with host scheme+domain)'),
+    },
+    async ({ host_id, url }) => {
+      const data = await apiRequestPost(await hostUrl(host_id, '/recrawl/queue'), { url });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Recrawl queued: ${url}\nTask ID: ${data.task_id}\nQuota remainder: ${data.quota_remainder}`,
+          },
+        ],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // 26. get-recrawl-queue
+  server.tool(
+    'get-recrawl-queue',
+    'List recrawl queue for a host (URLs submitted via add-recrawl-url with their state).',
+    {
+      host_id: z.string().describe('Host ID (e.g. "https:example.com:443")'),
+      limit: z.number().optional().describe('Max results (default 10)'),
+      offset: z.number().optional().describe('Pagination offset'),
+    },
+    async ({ host_id, limit, offset }) => {
+      const data = await apiRequest(await hostUrl(host_id, '/recrawl/queue'), paginationParams(limit, offset));
+      const lines = (data.tasks || []).map((t) => `${t.url} — ${t.state}${t.added_time ? ` (added ${t.added_time})` : ''}`);
+      return {
+        content: [{ type: 'text', text: lines.join('\n') || 'Recrawl queue is empty.' }],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // 27. get-recrawl-task
+  server.tool(
+    'get-recrawl-task',
+    'Get state of a single recrawl task by task_id (returned by add-recrawl-url).',
+    {
+      host_id: z.string().describe('Host ID'),
+      task_id: z.string().describe('Recrawl task ID'),
+    },
+    async ({ host_id, task_id }) => {
+      const data = await apiRequest(await hostUrl(host_id, `/recrawl/queue/${task_id}`));
+      return {
+        content: [{ type: 'text', text: `${data.url || ''} — ${data.state || 'unknown'}${data.added_time ? ` (added ${data.added_time})` : ''}` }],
+        structuredContent: data,
+      };
+    },
+  );
+
   // === Host Management (2 tools) ===
 
   // add-host
