@@ -721,7 +721,9 @@ async function runServer() {
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(await hostUrl(host_id, '/recrawl/queue'), paginationParams(limit, offset));
-      const lines = (data.tasks || []).map((t) => `${t.url} — ${t.state}${t.added_time ? ` (added ${t.added_time})` : ''}`);
+      const lines = (data.tasks || []).map(
+        (t) => `${t.url} — ${t.state}${t.added_time ? ` (added ${t.added_time})` : ''}`,
+      );
       return {
         content: [{ type: 'text', text: lines.join('\n') || 'Recrawl queue is empty.' }],
         structuredContent: data,
@@ -740,7 +742,12 @@ async function runServer() {
     async ({ host_id, task_id }) => {
       const data = await apiRequest(await hostUrl(host_id, `/recrawl/queue/${task_id}`));
       return {
-        content: [{ type: 'text', text: `${data.url || ''} — ${data.state || 'unknown'}${data.added_time ? ` (added ${data.added_time})` : ''}` }],
+        content: [
+          {
+            type: 'text',
+            text: `${data.url || ''} — ${data.state || 'unknown'}${data.added_time ? ` (added ${data.added_time})` : ''}`,
+          },
+        ],
         structuredContent: data,
       };
     },
