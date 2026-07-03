@@ -1,6 +1,8 @@
 # yandex-wordstat-mcp
 
-MCP server for Yandex Wordstat API. Research keywords, analyze search volume trends, and explore regional search distribution for Russian and CIS markets.
+MCP server for Yandex Wordstat via **Yandex Cloud Search API v2**. Research keywords, analyze search volume trends, and explore regional search distribution for Russian and CIS markets.
+
+> **v2.0:** the legacy `api.wordstat.yandex.net` API was shut down by Yandex in 2026. The server now talks to `searchapi.api.cloud.yandex.net/v2/wordstat/*` and authenticates with a Yandex Cloud API key instead of an OAuth token. Tool names and parameters are unchanged.
 
 ## Installation
 
@@ -19,30 +21,34 @@ Add to your MCP client config:
       "command": "npx",
       "args": ["-y", "yandex-wordstat-mcp"],
       "env": {
-        "YANDEX_WORDSTAT_TOKEN": "your-oauth-token"
+        "WORDSTAT_API_KEY": "AQVN...",
+        "WORDSTAT_FOLDER_ID": "b1g..."
       }
     }
   }
 }
 ```
 
+Alternatively, put the credentials into `~/.config/yandex-cloud/wordstat.env` (used as a fallback when the env vars are not set):
+
+```
+WORDSTAT_API_KEY=AQVN...
+WORDSTAT_FOLDER_ID=b1g...
+```
+
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `YANDEX_WORDSTAT_TOKEN` | Yes | OAuth token for Wordstat API |
-| `YANDEX_CLIENT_ID` | For auth flow | Yandex OAuth app client ID |
-| `YANDEX_CLIENT_SECRET` | For auth flow | Yandex OAuth app client secret |
+| `WORDSTAT_API_KEY` | Yes | Yandex Cloud API key (secret, `AQVN...`) of a service account |
+| `WORDSTAT_FOLDER_ID` | Yes | Yandex Cloud folder ID (`b1g...`) used for billing and access checks |
 
-## Authentication
+## Authentication (how to get the key)
 
-To obtain an OAuth token interactively:
-
-```bash
-npx yandex-wordstat-mcp auth
-```
-
-This opens a browser for Yandex OAuth authorization and returns a token. Set the token as `YANDEX_WORDSTAT_TOKEN`.
+1. Sign in to the [Yandex Cloud console](https://console.yandex.cloud/) and pick (or create) a folder — its ID is visible in the URL: `console.yandex.cloud/folders/<folderId>/...`. A billing account must be linked to the cloud.
+2. Create a **service account** in that folder with the **`search-api.webSearch.user`** role.
+3. Open the service account → **Create new key → API key**, scope **`yc.search-api.execute`**.
+4. Copy the secret (shown once) into `WORDSTAT_API_KEY`; the key identifier (`ajel...`) is only needed to rotate or revoke the key later.
 
 ## Rate Limiting
 
@@ -52,7 +58,7 @@ The server enforces a client-side rate limit of 10 requests per second using a s
 
 ### get-regions-tree
 
-Get the Yandex Wordstat regions hierarchy tree. Free (0 quota units).
+Get the Yandex Wordstat regions hierarchy tree.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -62,7 +68,7 @@ Returns a tree of regions with `value` (region ID), `label` (name), and `childre
 
 ### get-region-children
 
-Get children of a specific region from the cached tree. Free (0 quota units). Does not make an API call -- works from the cached region tree.
+Get children of a specific region from the cached tree. Does not make an API call -- works from the cached region tree.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
@@ -71,23 +77,24 @@ Get children of a specific region from the cached tree. Free (0 quota units). Do
 
 ### top-requests
 
-Find popular search queries containing a keyword. Costs 1 quota unit.
+Find popular search queries containing a keyword (last 30 days), plus associated queries.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `phrase` | string | Yes | -- | Keyword or phrase to search for |
+| `phrase` | string | Yes | -- | Keyword or phrase to search for (max 400 chars) |
 | `regions` | number[] | No | -- | Region IDs to filter by |
 | `devices` | enum[] | No | -- | Device types: `desktop`, `phone`, `tablet` |
+| `limit` | number | No | 100 | Max phrases in response (1-2000) |
 
-Returns an array of `{ phrase, count }` sorted by search volume.
+Returns `{ topRequests: [{ phrase, count }], associations: [{ phrase, count }], totalCount }` sorted by search volume.
 
 ### dynamics
 
-Analyze search volume trends over time for a keyword. Costs 2 quota units.
+Analyze search volume trends over time for a keyword.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `phrase` | string | Yes | -- | Keyword or phrase |
+| `phrase` | string | Yes | -- | Keyword or phrase (max 400 chars) |
 | `period` | enum | No | `monthly` | Aggregation: `daily`, `weekly`, `monthly` |
 | `fromDate` | string | No | auto | Start date (YYYY-MM-DD) |
 | `toDate` | string | No | auto | End date (YYYY-MM-DD) |
@@ -99,15 +106,15 @@ Default date ranges by period:
 - `weekly`: last ~1 year (Monday to Sunday boundaries)
 - `monthly`: last 12 months (1st to end of month boundaries)
 
-Returns an array of `{ date, count }` data points.
+Returns an array of `{ date, count, share }` data points.
 
 ### regions
 
-Get regional distribution of search interest for a keyword. Costs 2 quota units.
+Get regional distribution of search interest for a keyword.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `phrase` | string | Yes | -- | Keyword or phrase |
+| `phrase` | string | Yes | -- | Keyword or phrase (max 400 chars) |
 | `regions` | number[] | No | -- | Region IDs to filter (client-side, includes descendants) |
 | `devices` | enum[] | No | -- | Device types: `desktop`, `phone`, `tablet` |
 | `limit` | number | No | 20 | Maximum results (1-50) |

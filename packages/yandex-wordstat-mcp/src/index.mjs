@@ -1,25 +1,59 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
 const command = process.argv[2];
 if (command === 'auth') {
-  const { runAuth } = await import('./auth.mjs');
-  await runAuth();
+  console.error(
+    'The legacy OAuth flow is gone: Wordstat now lives in Yandex Cloud Search API v2.\n' +
+      'Create a service account with the search-api.webSearch.user role, issue an API key\n' +
+      '(scope yc.search-api.execute) and put it into ~/.config/yandex-cloud/wordstat.env:\n' +
+      '  WORDSTAT_API_KEY=<secret>\n  WORDSTAT_FOLDER_ID=<b1g...>\n' +
+      'or export WORDSTAT_API_KEY / WORDSTAT_FOLDER_ID env vars.',
+  );
+  process.exit(1);
 } else {
   await runServer();
 }
 
 async function runServer() {
-  const API_BASE = 'https://api.wordstat.yandex.net';
+  // Wordstat переехал в Yandex Cloud Search API v2 (старый api.wordstat.yandex.net закрыт в 2026).
+  const API_BASE = 'https://searchapi.api.cloud.yandex.net/v2/wordstat';
+  const ENV_FILE = join(homedir(), '.config', 'yandex-cloud', 'wordstat.env');
 
-  function getToken() {
-    const token = process.env.YANDEX_WORDSTAT_TOKEN;
-    if (!token)
-      throw new Error('YANDEX_WORDSTAT_TOKEN is required. Run `npx yandex-wordstat-mcp auth` or set it manually.');
-    return token;
+  let cachedCreds = null;
+
+  function getCreds() {
+    if (cachedCreds) return cachedCreds;
+    let apiKey = process.env.WORDSTAT_API_KEY;
+    let folderId = process.env.WORDSTAT_FOLDER_ID;
+    if (!apiKey || !folderId) {
+      try {
+        const raw = readFileSync(ENV_FILE, 'utf8');
+        for (const line of raw.split('\n')) {
+          const m = line.match(/^\s*(?:export\s+)?([A-Z_]+)\s*=\s*(.+?)\s*$/);
+          if (!m) continue;
+          const value = m[2].replace(/^(["'])(.*)\1$/, '$2'); // strip surrounding quotes
+          if (m[1] === 'WORDSTAT_API_KEY' && !apiKey) apiKey = value;
+          if (m[1] === 'WORDSTAT_FOLDER_ID' && !folderId) folderId = value;
+        }
+      } catch {
+        /* файла может не быть — проверка ниже */
+      }
+    }
+    if (!apiKey || !folderId) {
+      throw new Error(
+        `WORDSTAT_API_KEY / WORDSTAT_FOLDER_ID are required (env vars or ${ENV_FILE}). ` +
+          'Create an API key for a service account with the search-api.webSearch.user role in Yandex Cloud.',
+      );
+    }
+    cachedCreds = { apiKey, folderId };
+    return cachedCreds;
   }
 
   // --- Shared utilities ---
@@ -77,6 +111,24 @@ async function runServer() {
     return dateStr;
   }
 
+  // v2 ждёт google.protobuf.Timestamp (RFC3339), отдаём полуночь UTC
+  function toTimestamp(dateStr) {
+    return `${dateStr}T00:00:00Z`;
+  }
+
+  const DEVICE_MAP = { desktop: 'DEVICE_DESKTOP', phone: 'DEVICE_PHONE', tablet: 'DEVICE_TABLET' };
+  const PERIOD_MAP = { daily: 'PERIOD_DAILY', weekly: 'PERIOD_WEEKLY', monthly: 'PERIOD_MONTHLY' };
+
+  function mapDevices(devices) {
+    return devices ? devices.map((d) => DEVICE_MAP[d]) : undefined;
+  }
+
+  // count/totalCount приходят строками (int64) — приводим к числу для отображения
+  function num(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
   // --- Rate Limiter (10 req/sec sliding window) ---
 
   const requestTimestamps = [];
@@ -84,7 +136,6 @@ async function runServer() {
 
   async function rateLimitedFetch(url, options) {
     const now = Date.now();
-    // Remove timestamps older than 1 second
     while (requestTimestamps.length > 0 && requestTimestamps[0] < now - 1000) {
       requestTimestamps.shift();
     }
@@ -99,14 +150,15 @@ async function runServer() {
   // --- API Request ---
 
   async function apiRequest(endpoint, body = {}) {
+    const { apiKey, folderId } = getCreds();
     const url = `${API_BASE}${endpoint}`;
     const response = await rateLimitedFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        Authorization: `Bearer ${getToken()}`,
+        Authorization: `Api-Key ${apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, folderId }),
     });
 
     if (!response.ok) {
@@ -120,15 +172,25 @@ async function runServer() {
   // --- Region Cache ---
 
   let regionsTree = null;
-  let regionsFlat = null; // Map<regionId, {label, parentId}>
+  let regionsFlat = null; // Map<regionId:number, {label, parentId}>
 
   async function getRegionsTree() {
-    if (regionsTree) return regionsTree;
-    const data = await apiRequest('/v1/getRegionsTree');
-    regionsTree = data;
+    if (regionsTree && regionsTree.length > 0) return regionsTree;
+    const data = await apiRequest('/getRegionsTree');
+    // v2: {regions:[{id:"1", label, children:[...]}]}; нормализуем к {value:number, label, children}
+    regionsTree = normalizeTree(data.regions || []);
     regionsFlat = new Map();
     buildFlatMap(regionsTree, null);
     return regionsTree;
+  }
+
+  function normalizeTree(nodes) {
+    if (!Array.isArray(nodes)) return [];
+    return nodes.map((node) => ({
+      value: num(node.id),
+      label: node.label,
+      children: normalizeTree(node.children || []),
+    }));
   }
 
   function buildFlatMap(nodes, parentId) {
@@ -191,12 +253,10 @@ async function runServer() {
       return { fromDate: formatDate(from), toDate: formatDate(to) };
     }
     if (period === 'weekly') {
-      // From Monday ~1 year ago to last Sunday
       const to = new Date(now);
       to.setDate(to.getDate() - ((to.getDay() + 6) % 7) - 1); // last Sunday
       const from = new Date(to);
       from.setFullYear(from.getFullYear() - 1);
-      // Adjust to Monday
       const dayOfWeek = from.getDay();
       const diff = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
       from.setDate(from.getDate() + diff);
@@ -212,12 +272,12 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-wordstat', version: '1.0.0' });
+  const server = new McpServer({ name: 'yandex-wordstat', version: '2.0.0' });
 
   // Tool 1: get-regions-tree
   server.tool(
     'get-regions-tree',
-    'Get the Yandex Wordstat regions hierarchy tree. Free (0 quota units).',
+    'Get the Yandex Wordstat regions hierarchy tree.',
     {
       depth: z.number().min(1).max(5).optional().describe('Maximum tree depth (default: 3)'),
     },
@@ -234,7 +294,7 @@ async function runServer() {
   // Tool 2: get-region-children
   server.tool(
     'get-region-children',
-    'Get children of a specific region from cached tree. Free (0 quota units).',
+    'Get children of a specific region from cached tree.',
     {
       regionId: z.number().describe('Region ID to get children for'),
       depth: z.number().min(1).max(3).optional().describe('Maximum subtree depth (default: 2)'),
@@ -265,34 +325,36 @@ async function runServer() {
   // Tool 3: top-requests
   server.tool(
     'top-requests',
-    'Find popular search queries containing a keyword. Costs 1 quota unit.',
+    'Find popular search queries containing a keyword (last 30 days), with associated queries.',
     {
-      phrase: z.string().describe('Keyword or phrase to search for'),
+      phrase: z.string().max(400).describe('Keyword or phrase to search for'),
       regions: z.array(z.number()).optional().describe('Region IDs to filter by'),
       devices: z
         .array(z.enum(['desktop', 'phone', 'tablet']))
         .optional()
         .describe('Device types to filter by'),
+      limit: z.number().min(1).max(2000).optional().describe('Max phrases in response (default: 100)'),
     },
-    async ({ phrase, regions, devices }) => {
-      const body = { phrase };
-      if (regions) body.regions = regions;
-      if (devices) body.devices = devices;
+    async ({ phrase, regions, devices, limit = 100 }) => {
+      const body = { phrase, numPhrases: String(limit) };
+      if (regions) body.regions = regions.map(String);
+      if (devices) body.devices = mapDevices(devices);
 
-      const data = await apiRequest('/v1/topRequests', body);
-      const topRequests = data.topRequests || [];
+      const data = await apiRequest('/topRequests', body);
+      const results = (data.results || []).map((r) => ({ phrase: r.phrase, count: num(r.count) }));
+      const associations = (data.associations || []).map((r) => ({ phrase: r.phrase, count: num(r.count) }));
 
       const summary =
-        topRequests.length > 0
-          ? topRequests
+        results.length > 0
+          ? results
               .slice(0, 20)
               .map((r, i) => `${i + 1}. "${r.phrase}" — ${r.count.toLocaleString()} searches`)
               .join('\n')
           : `No popular queries found for "${phrase}".`;
 
       return {
-        content: [{ type: 'text', text: `Top queries for "${phrase}" (${topRequests.length} results):\n\n${summary}` }],
-        structuredContent: data,
+        content: [{ type: 'text', text: `Top queries for "${phrase}" (${results.length} results):\n\n${summary}` }],
+        structuredContent: { topRequests: results, associations, totalCount: num(data.totalCount) },
       };
     },
   );
@@ -300,9 +362,9 @@ async function runServer() {
   // Tool 4: dynamics
   server.tool(
     'dynamics',
-    'Analyze search volume trends over time for a keyword. Costs 2 quota units.',
+    'Analyze search volume trends over time for a keyword.',
     {
-      phrase: z.string().describe('Keyword or phrase'),
+      phrase: z.string().max(400).describe('Keyword or phrase'),
       period: z.enum(['daily', 'weekly', 'monthly']).optional().describe('Aggregation period (default: monthly)'),
       fromDate: z.string().optional().describe('Start date YYYY-MM-DD'),
       toDate: z.string().optional().describe('End date YYYY-MM-DD'),
@@ -317,17 +379,23 @@ async function runServer() {
       const validTo = validateDate(toDate);
 
       const defaults = getDefaultDates(period);
+      const from = validFrom || defaults.fromDate;
+      const to = validTo || defaults.toDate;
       const body = {
         phrase,
-        period,
-        fromDate: validFrom || defaults.fromDate,
-        toDate: validTo || defaults.toDate,
+        period: PERIOD_MAP[period],
+        fromDate: toTimestamp(from),
+        toDate: toTimestamp(to),
       };
-      if (regions) body.regions = regions;
-      if (devices) body.devices = devices;
+      if (regions) body.regions = regions.map(String);
+      if (devices) body.devices = mapDevices(devices);
 
-      const data = await apiRequest('/v1/dynamics', body);
-      const dynamics = data.dynamics || [];
+      const data = await apiRequest('/dynamics', body);
+      const dynamics = (data.results || []).map((d) => ({
+        date: String(d.date || '').split('T')[0],
+        count: num(d.count),
+        share: d.share,
+      }));
 
       let trend = '';
       if (dynamics.length >= 2) {
@@ -339,7 +407,7 @@ async function runServer() {
 
       const summary =
         dynamics.length > 0
-          ? `"${phrase}" dynamics (${period}, ${body.fromDate} → ${body.toDate})${trend}\n\n` +
+          ? `"${phrase}" dynamics (${period}, ${from} → ${to})${trend}\n\n` +
             dynamics
               .slice(0, 24)
               .map((d) => `${d.date}: ${d.count.toLocaleString()}`)
@@ -348,7 +416,7 @@ async function runServer() {
 
       return {
         content: [{ type: 'text', text: summary }],
-        structuredContent: { ...data, period, fromDate: body.fromDate, toDate: body.toDate },
+        structuredContent: { dynamics, period, fromDate: from, toDate: to },
       };
     },
   );
@@ -356,10 +424,10 @@ async function runServer() {
   // Tool 5: regions
   server.tool(
     'regions',
-    'Get regional distribution of search interest for a keyword. Costs 2 quota units.',
+    'Get regional distribution of search interest for a keyword.',
     {
-      phrase: z.string().describe('Keyword or phrase'),
-      regions: z.array(z.number()).optional().describe('Region IDs to filter (client-side)'),
+      phrase: z.string().max(400).describe('Keyword or phrase'),
+      regions: z.array(z.number()).optional().describe('Region IDs to filter (client-side, with descendants)'),
       devices: z
         .array(z.enum(['desktop', 'phone', 'tablet']))
         .optional()
@@ -368,13 +436,19 @@ async function runServer() {
     },
     async ({ phrase, regions: filterRegions, devices, limit = 20 }) => {
       const body = { phrase };
-      if (devices) body.devices = devices;
+      if (devices) body.devices = mapDevices(devices);
 
       // Ensure regions tree is loaded for enrichment
       await getRegionsTree();
 
-      const data = await apiRequest('/v1/regions', body);
-      let regionResults = data.regions || [];
+      const data = await apiRequest('/regions', body);
+      let regionResults = (data.results || []).map((r) => ({
+        regionId: num(r.region),
+        count: num(r.count),
+        share: typeof r.share === 'number' ? r.share : num(r.share),
+        // в доках v2 affinityIndex — строка; на живом API — число. Нормализуем оба случая
+        affinityIndex: r.affinityIndex != null ? num(r.affinityIndex) : null,
+      }));
 
       // Client-side filtering by region IDs + descendants
       if (filterRegions && filterRegions.length > 0) {
@@ -402,7 +476,9 @@ async function runServer() {
           ? regionResults
               .map(
                 (r, i) =>
-                  `${i + 1}. ${r.regionName} — ${(r.count || 0).toLocaleString()} (affinity: ${r.affinityIndex || 'N/A'})`,
+                  `${i + 1}. ${r.regionName} — ${(r.count || 0).toLocaleString()} (affinity: ${
+                    r.affinityIndex != null ? r.affinityIndex.toFixed(1) : 'N/A'
+                  })`,
               )
               .join('\n')
           : `No regional data for "${phrase}".`;
@@ -418,5 +494,5 @@ async function runServer() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('yandex-wordstat-mcp running on stdio');
+  console.error('yandex-wordstat-mcp (Search API v2) running on stdio');
 }

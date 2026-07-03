@@ -11,7 +11,7 @@
     "yandex-wordstat": {
       "command": "npx",
       "args": ["-y", "yandex-wordstat-mcp"],
-      "env": { "YANDEX_WORDSTAT_TOKEN": "${YANDEX_WORDSTAT_TOKEN}" }
+      "env": { "WORDSTAT_API_KEY": "${WORDSTAT_API_KEY}", "WORDSTAT_FOLDER_ID": "${WORDSTAT_FOLDER_ID}" }
     },
     "yandex-webmaster": {
       "command": "npx",

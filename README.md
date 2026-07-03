@@ -28,13 +28,14 @@ npx yandex-metrika-mcp
 
 2. Set environment variables (see below).
 
-3. For packages that require OAuth tokens (Wordstat, Webmaster, Metrika), run the auth flow:
+3. For packages that require OAuth tokens (Webmaster, Metrika), run the auth flow:
 
 ```bash
-npx yandex-wordstat-mcp auth
 npx yandex-webmaster-mcp auth
 npx yandex-metrika-mcp auth
 ```
+
+Wordstat no longer uses OAuth: since v2.0 it talks to Yandex Cloud Search API v2 and needs a service-account API key (`WORDSTAT_API_KEY`) + folder ID (`WORDSTAT_FOLDER_ID`) — see [packages/yandex-wordstat-mcp](packages/yandex-wordstat-mcp).
 
 ## Configuration
 
@@ -56,7 +57,10 @@ Add to your MCP client configuration. Example using `plugin.mcp.json`:
     "yandex-wordstat": {
       "command": "npx",
       "args": ["-y", "yandex-wordstat-mcp"],
-      "env": { "YANDEX_WORDSTAT_TOKEN": "${YANDEX_WORDSTAT_TOKEN}" }
+      "env": {
+        "WORDSTAT_API_KEY": "${WORDSTAT_API_KEY}",
+        "WORDSTAT_FOLDER_ID": "${WORDSTAT_FOLDER_ID}"
+      }
     },
     "yandex-webmaster": {
       "command": "npx",
@@ -105,7 +109,8 @@ The `.mcp.json` file runs servers directly from source with a shared `.env` file
 |----------|-------------|-------------|
 | `YANDEX_SEARCH_API_KEY` | yandex-search-mcp | API key from [Yandex Cloud](https://console.yandex.cloud/) |
 | `YANDEX_FOLDER_ID` | yandex-search-mcp | Folder ID from Yandex Cloud |
-| `YANDEX_WORDSTAT_TOKEN` | yandex-wordstat-mcp | OAuth token for Wordstat |
+| `WORDSTAT_API_KEY` | yandex-wordstat-mcp | Yandex Cloud API key (service account, role `search-api.webSearch.user`) |
+| `WORDSTAT_FOLDER_ID` | yandex-wordstat-mcp | Yandex Cloud folder ID for Search API v2 |
 | `YANDEX_WEBMASTER_TOKEN` | yandex-webmaster-mcp | OAuth token for Webmaster |
 | `YANDEX_METRIKA_TOKEN` | yandex-metrika-mcp | OAuth token for Metrika (scope: `metrika:read`) |
 | `YANDEX_CLIENT_ID` | OAuth flow (optional) | Yandex OAuth app client ID |

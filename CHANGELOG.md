@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-03
+
+### Changed
+- **yandex-wordstat-mcp 2.0.0 — migrated to Yandex Cloud Search API v2.** Yandex shut down the legacy `api.wordstat.yandex.net` (all paths 404). The server now calls `searchapi.api.cloud.yandex.net/v2/wordstat/{topRequests,dynamics,regions,getRegionsTree}` with `Authorization: Api-Key` + `folderId`. New env: `WORDSTAT_API_KEY` / `WORDSTAT_FOLDER_ID` (fallback file `~/.config/yandex-cloud/wordstat.env`); OAuth flow and `auth` subcommand removed (`src/auth.mjs` deleted). Tool names/params unchanged; request/response mapping added (devices → `DEVICE_*`, period → `PERIOD_*`, dates → RFC3339, int64 string counts → numbers, region tree `{id,label}` → `{value,label}`); `top-requests` gained a `limit` param (1-2000, default 100) and now also returns `associations`. All 5 tools verified end-to-end against the live API.
+
+
 ## 2026-03-16
 
 ### Added (update)
