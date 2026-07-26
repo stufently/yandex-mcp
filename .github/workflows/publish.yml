@@ -31,8 +31,11 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
+      # Third-party экшен запинен по commit-SHA: эта джоба держит NPM_TOKEN и
+      # публикует пакеты, а тег v2 у апстрима mutable. SHA = то, во что v2
+      # резолвился на 2026-07-25 (релиз v2.2.0), т.е. поведение не меняется.
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

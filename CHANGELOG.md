@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-25
+
+### Security
+- CI: `oven-sh/setup-bun` запинен по commit-SHA
+  (`0c5077e51419868618aeaa5fe8019c62421857d6`, = релиз v2.2.0) в `ci.yml` и
+  `publish.yml`. Тег `v2` у апстрима mutable, а джоба `publish` держит
+  `NPM_TOKEN` и публикует 4 пакета с provenance — плавающая ссылка там это
+  прямой supply-chain-риск. SHA = то, во что `v2` резолвился на 2026-07-25,
+  поведение не меняется. First-party `actions/*` оставлены на `vN`.
+
 ## 2026-07-03
 
 ### Changed
