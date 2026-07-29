@@ -4,8 +4,13 @@ MCP server for Yandex Search API v2 (Cloud). Search the web through Yandex and g
 
 ## Installation
 
+Run from source — the npm name `yandex-search-mcp` belongs to an unrelated publisher
+(see the note in the [root README](../../README.md)):
+
 ```bash
-npx yandex-search-mcp
+git clone https://github.com/stufently/yandex-mcp.git
+cd yandex-mcp && bun install
+node packages/yandex-search-mcp/src/index.mjs
 ```
 
 ## Configuration
@@ -16,8 +21,8 @@ Add to your MCP client config:
 {
   "mcpServers": {
     "yandex-search": {
-      "command": "npx",
-      "args": ["-y", "yandex-search-mcp"],
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-search-mcp/src/index.mjs"],
       "env": {
         "YANDEX_SEARCH_API_KEY": "your-api-key",
         "YANDEX_FOLDER_ID": "your-folder-id"

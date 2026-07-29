@@ -1,27 +1,36 @@
 {
   "mcpServers": {
     "yandex-search": {
-      "command": "npx",
-      "args": ["-y", "yandex-search-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-search-mcp/src/index.mjs"],
       "env": {
         "YANDEX_SEARCH_API_KEY": "${YANDEX_SEARCH_API_KEY}",
         "YANDEX_FOLDER_ID": "${YANDEX_FOLDER_ID}"
       }
     },
     "yandex-wordstat": {
-      "command": "npx",
-      "args": ["-y", "yandex-wordstat-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-wordstat-mcp/src/index.mjs"],
       "env": { "WORDSTAT_API_KEY": "${WORDSTAT_API_KEY}", "WORDSTAT_FOLDER_ID": "${WORDSTAT_FOLDER_ID}" }
     },
     "yandex-webmaster": {
-      "command": "npx",
-      "args": ["-y", "yandex-webmaster-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-webmaster-mcp/src/index.mjs"],
       "env": { "YANDEX_WEBMASTER_TOKEN": "${YANDEX_WEBMASTER_TOKEN}" }
     },
     "yandex-metrika": {
-      "command": "npx",
-      "args": ["-y", "yandex-metrika-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-metrika-mcp/src/index.mjs"],
       "env": { "YANDEX_METRIKA_TOKEN": "${YANDEX_METRIKA_TOKEN}" }
+    },
+    "yandex-direct": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-direct-mcp/src/index.mjs"],
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "${YANDEX_DIRECT_TOKEN}",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "${YANDEX_DIRECT_CLIENT_LOGIN}",
+        "YANDEX_DIRECT_SANDBOX": "${YANDEX_DIRECT_SANDBOX}"
+      }
     }
   }
 }

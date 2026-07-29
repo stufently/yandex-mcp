@@ -466,18 +466,18 @@ inputSchema: {
 #### Indexing (4 tools)
 9. **get-indexing-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../indexing/history`
 10. **get-indexing-samples** — input: `{ host_id, limit?(1-100), offset? }` → `GET .../indexing/samples`
-11. **get-insearch-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../indexing/insearch/history`
-12. **get-insearch-samples** — input: `{ host_id, limit?(1-100), offset? }` → `GET .../indexing/insearch/samples`
+11. **get-insearch-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../search-urls/in-search/history`
+12. **get-insearch-samples** — input: `{ host_id, limit?(1-100), offset? }` → `GET .../search-urls/in-search/samples`
 
 #### Search Events (2 tools)
 13. **get-search-events-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../search-urls/events/history`
-14. **get-search-events-samples** — input: `{ host_id, event_type: enum('APPEARED','REMOVED'), limit?(1-100, def:10), offset? }` → `GET .../search-urls/events/samples`
+14. **get-search-events-samples** — input: `{ host_id, event_type?: enum('APPEARED_IN_SEARCH','REMOVED_FROM_SEARCH'), limit?(1-100, def:10), offset? }` → `GET .../search-urls/events/samples` (event_type фильтруется КЛИЕНТСКИ — API его игнорирует)
 
 #### Links (4 tools)
 15. **get-external-links** — input: `{ host_id, limit?(1-100), offset? }` → `GET .../links/external/samples`
 16. **get-external-links-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../links/external/history`
-17. **get-broken-internal-links** — input: `{ host_id, limit?(1-100), offset? }` → `GET .../links/internal/samples`
-18. **get-broken-internal-links-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../links/internal/history`
+17. **get-broken-internal-links** — input: `{ host_id, limit?(1-100), offset? }` → `GET .../links/internal/broken/samples`
+18. **get-broken-internal-links-history** — input: `{ host_id, date_from?, date_to? }` → `GET .../links/internal/broken/history`
 
 #### Sitemaps (3 tools)
 19. **get-sitemaps** — input: `{ host_id, limit?(1-100) }` → `GET .../sitemaps`
@@ -618,27 +618,32 @@ Stat API параметры:
 {
   "mcpServers": {
     "yandex-search": {
-      "command": "npx",
-      "args": ["-y", "yandex-search-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-search-mcp/src/index.mjs"],
       "env": {
         "YANDEX_SEARCH_API_KEY": "${YANDEX_SEARCH_API_KEY}",
         "YANDEX_FOLDER_ID": "${YANDEX_FOLDER_ID}"
       }
     },
     "yandex-wordstat": {
-      "command": "npx",
-      "args": ["-y", "yandex-wordstat-mcp"],
-      "env": { "YANDEX_WORDSTAT_TOKEN": "${YANDEX_WORDSTAT_TOKEN}" }
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-wordstat-mcp/src/index.mjs"],
+      "env": { "WORDSTAT_API_KEY": "${WORDSTAT_API_KEY}", "WORDSTAT_FOLDER_ID": "${WORDSTAT_FOLDER_ID}" }
     },
     "yandex-webmaster": {
-      "command": "npx",
-      "args": ["-y", "yandex-webmaster-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-webmaster-mcp/src/index.mjs"],
       "env": { "YANDEX_WEBMASTER_TOKEN": "${YANDEX_WEBMASTER_TOKEN}" }
     },
     "yandex-metrika": {
-      "command": "npx",
-      "args": ["-y", "yandex-metrika-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-metrika-mcp/src/index.mjs"],
       "env": { "YANDEX_METRIKA_TOKEN": "${YANDEX_METRIKA_TOKEN}" }
+    },
+    "yandex-direct": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-direct-mcp/src/index.mjs"],
+      "env": { "YANDEX_DIRECT_TOKEN": "${YANDEX_DIRECT_TOKEN}" }
     }
   }
 }
@@ -672,7 +677,7 @@ YANDEX_WEBMASTER_TOKEN=
 # Yandex Metrika (https://oauth.yandex.com/, scope: metrika:read)
 YANDEX_METRIKA_TOKEN=
 
-# Optional: for OAuth flow (npx <package> auth)
+# Optional: for OAuth flow (node packages/<package>/src/index.mjs auth)
 YANDEX_CLIENT_ID=
 YANDEX_CLIENT_SECRET=
 ```

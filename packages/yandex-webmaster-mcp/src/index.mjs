@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { formatSeries, formatUrlHistory } from './series.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -159,6 +160,11 @@ async function runServer() {
     return params;
   }
 
+  function omitKey(obj, key) {
+    const { [key]: _dropped, ...rest } = obj;
+    return rest;
+  }
+
   function paginationParams(limit, offset) {
     const params = {};
     if (limit !== undefined) params.limit = limit;
@@ -168,7 +174,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-webmaster', version: '1.0.0' });
+  const server = new McpServer({ name: 'yandex-webmaster', version: '1.1.0' });
 
   // === Core (3 tools) ===
 
@@ -252,14 +258,8 @@ async function runServer() {
     },
     async ({ host_id, date_from, date_to }) => {
       const data = await apiRequest(await hostUrl(host_id, '/sqi-history'), dateParams(date_from, date_to));
-      const points = data.points || [];
       return {
-        content: [
-          {
-            type: 'text',
-            text: `SQI history: ${points.length} data points.${points.length > 0 ? ` Latest: ${points[points.length - 1].value} (${points[points.length - 1].date})` : ''}`,
-          },
-        ],
+        content: [{ type: 'text', text: formatSeries('SQI history', data) }],
         structuredContent: data,
       };
     },
@@ -321,8 +321,17 @@ async function runServer() {
             `${i + 1}. "${q.query_text}" — shows: ${q.indicators?.TOTAL_SHOWS || 0}, clicks: ${q.indicators?.TOTAL_CLICKS || 0}`,
         )
         .join('\n');
+      // Без явных дат API сам выбирает окно (обычно последние 7 дней) и сообщает его
+      // в date_from/date_to — молча выбрасывать это нельзя, иначе цифры не с чем соотнести.
+      const window = data.date_from && data.date_to ? `, ${data.date_from} → ${data.date_to}` : '';
+      const shown = queries.length > 20 ? ` (showing 20 of ${queries.length})` : '';
       return {
-        content: [{ type: 'text', text: `Popular queries (${queries.length} results):\n${summary}` }],
+        content: [
+          {
+            type: 'text',
+            text: `Popular queries: ${queries.length} of ${data.count ?? 'n/a'} total${window}${shown}\n${summary}`,
+          },
+        ],
         structuredContent: data,
       };
     },
@@ -347,7 +356,7 @@ async function runServer() {
 
       const data = await apiRequest(await hostUrl(host_id, '/search-queries/all/history'), params);
       return {
-        content: [{ type: 'text', text: `Query history: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatSeries('Query history', data) }],
         structuredContent: data,
       };
     },
@@ -367,7 +376,7 @@ async function runServer() {
     async ({ host_id, date_from, date_to }) => {
       const data = await apiRequest(await hostUrl(host_id, '/indexing/history'), dateParams(date_from, date_to));
       return {
-        content: [{ type: 'text', text: `Indexing history: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatSeries('Indexing history', data) }],
         structuredContent: data,
       };
     },
@@ -403,11 +412,11 @@ async function runServer() {
     },
     async ({ host_id, date_from, date_to }) => {
       const data = await apiRequest(
-        await hostUrl(host_id, '/indexing/insearch/history'),
+        await hostUrl(host_id, '/search-urls/in-search/history'),
         dateParams(date_from, date_to),
       );
       return {
-        content: [{ type: 'text', text: `In-search history: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatSeries('In-search history', data) }],
         structuredContent: data,
       };
     },
@@ -424,12 +433,12 @@ async function runServer() {
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(
-        await hostUrl(host_id, '/indexing/insearch/samples'),
+        await hostUrl(host_id, '/search-urls/in-search/samples'),
         paginationParams(limit, offset),
       );
       const samples = data.samples || [];
       return {
-        content: [{ type: 'text', text: `In-search samples: ${samples.length} URLs.` }],
+        content: [{ type: 'text', text: `In-search samples: ${samples.length} URLs (${data.count ?? 'n/a'} total).` }],
         structuredContent: data,
       };
     },
@@ -452,7 +461,7 @@ async function runServer() {
         dateParams(date_from, date_to),
       );
       return {
-        content: [{ type: 'text', text: `Search events history: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatSeries('Search events history', data) }],
         structuredContent: data,
       };
     },
@@ -461,22 +470,42 @@ async function runServer() {
   // 14. get-search-events-samples
   server.tool(
     'get-search-events-samples',
-    'Get sample URLs for search events.',
+    'Get sample URLs for search events (appeared in / removed from search). ' +
+      'Note: the API has no server-side event filter, so event_type is applied to the fetched page ' +
+      'and offset/limit still paginate the unfiltered stream.',
     {
       host_id: z.string().describe('Host ID'),
-      event_type: z.enum(['APPEARED', 'REMOVED']).describe('Event type'),
+      event_type: z
+        .enum(['APPEARED_IN_SEARCH', 'REMOVED_FROM_SEARCH'])
+        .optional()
+        .describe('Keep only events of this type (client-side filter; omit to get both)'),
       limit: z.number().min(1).max(100).optional().describe('Limit (default: 10)'),
       offset: z.number().min(0).optional(),
     },
     async ({ host_id, event_type, limit = 10, offset }) => {
-      const data = await apiRequest(await hostUrl(host_id, '/search-urls/events/samples'), {
-        ...paginationParams(limit, offset),
-        event_type,
-      });
-      const samples = data.samples || [];
+      // event_type НЕ отправляем: API его молча игнорирует — любое значение, включая мусорное,
+      // отдаёт одну и ту же смешанную выдачу (проверено на боевом API 2026-07-29).
+      const data = await apiRequest(
+        await hostUrl(host_id, '/search-urls/events/samples'),
+        paginationParams(limit, offset),
+      );
+      const all = data.samples || [];
+      const samples = event_type ? all.filter((s) => s.event === event_type) : all;
+      const label = event_type ? `${event_type} events` : 'Search events';
+      // `count` — общее число событий ОБОИХ типов. Ставить его рядом с отфильтрованным
+      // числом как «total» — значит склеить две разные величины; сколько всего событий
+      // запрошенного типа, без обхода всех страниц узнать нельзя.
+      const filtered = event_type
+        ? ` (of ${all.length} on this page; ${data.count ?? 'n/a'} events of both types in total)`
+        : `, ${data.count ?? 'n/a'} in total`;
       return {
-        content: [{ type: 'text', text: `${event_type} events: ${samples.length} sample URLs.` }],
-        structuredContent: data,
+        content: [{ type: 'text', text: `${label}: ${samples.length} sample URLs${filtered}.` }],
+        structuredContent: {
+          ...omitKey(data, 'count'),
+          samples,
+          unfiltered_total_count: data.count,
+          unfiltered_page_count: all.length,
+        },
       };
     },
   );
@@ -514,7 +543,7 @@ async function runServer() {
     async ({ host_id, date_from, date_to }) => {
       const data = await apiRequest(await hostUrl(host_id, '/links/external/history'), dateParams(date_from, date_to));
       return {
-        content: [{ type: 'text', text: `External links history: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatSeries('External links history', data) }],
         structuredContent: data,
       };
     },
@@ -530,10 +559,15 @@ async function runServer() {
       offset: z.number().min(0).optional(),
     },
     async ({ host_id, limit, offset }) => {
-      const data = await apiRequest(await hostUrl(host_id, '/links/internal/samples'), paginationParams(limit, offset));
+      const data = await apiRequest(
+        await hostUrl(host_id, '/links/internal/broken/samples'),
+        paginationParams(limit, offset),
+      );
       const links = data.links || [];
       return {
-        content: [{ type: 'text', text: `Broken internal links: ${links.length} samples.` }],
+        content: [
+          { type: 'text', text: `Broken internal links: ${links.length} samples (${data.count ?? 'n/a'} total).` },
+        ],
         structuredContent: data,
       };
     },
@@ -549,9 +583,12 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(await hostUrl(host_id, '/links/internal/history'), dateParams(date_from, date_to));
+      const data = await apiRequest(
+        await hostUrl(host_id, '/links/internal/broken/history'),
+        dateParams(date_from, date_to),
+      );
       return {
-        content: [{ type: 'text', text: `Broken internal links history: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatSeries('Broken internal links history', data) }],
         structuredContent: data,
       };
     },
@@ -659,7 +696,7 @@ async function runServer() {
         url: targetUrl,
       });
       return {
-        content: [{ type: 'text', text: `URL history for ${targetUrl}: ${(data.points || []).length} data points.` }],
+        content: [{ type: 'text', text: formatUrlHistory(`URL history for ${targetUrl}`, data) }],
         structuredContent: data,
       };
     },
@@ -786,12 +823,20 @@ async function runServer() {
     },
     async ({ host_id }) => {
       const data = await apiRequest(await hostUrl(host_id, '/verification'));
-      const methods = (data.applicable_verifiers || []).map((v) => v.verifier_type).join(', ');
+      // Ответ отдаёт verification_state ("VERIFIED"/"NONE"/…), поля `verified` в нём нет,
+      // а applicable_verifiers — массив СТРОК, не объектов (проверено на боевом API 2026-07-29).
+      const methods = (data.applicable_verifiers || [])
+        .map((v) => (typeof v === 'string' ? v : v?.verifier_type))
+        .filter(Boolean)
+        .join(', ');
       return {
         content: [
           {
             type: 'text',
-            text: `Verified: ${data.verified || false}\nApplicable methods: ${methods || 'none'}`,
+            text:
+              `Verification state: ${data.verification_state || 'UNKNOWN'}` +
+              `${data.verification_type ? ` (via ${data.verification_type})` : ''}\n` +
+              `Applicable methods: ${methods || 'none'}`,
           },
         ],
         structuredContent: data,

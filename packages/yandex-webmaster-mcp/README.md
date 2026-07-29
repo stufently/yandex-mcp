@@ -1,11 +1,16 @@
 # yandex-webmaster-mcp
 
-MCP server for Yandex Webmaster API v4. Monitor site health, indexing status, search queries, backlinks, sitemaps, and more. All 24 tools are read-only.
+MCP server for Yandex Webmaster API v4. Monitor site health, indexing status, search queries, backlinks, sitemaps, and more.
 
 ## Installation
 
+Run from source — the npm name `yandex-webmaster-mcp` belongs to an unrelated publisher
+(see the note in the [root README](../../README.md)):
+
 ```bash
-npx yandex-webmaster-mcp
+git clone https://github.com/stufently/yandex-mcp.git
+cd yandex-mcp && bun install
+node packages/yandex-webmaster-mcp/src/index.mjs
 ```
 
 ## Configuration
@@ -16,8 +21,8 @@ Add to your MCP client config:
 {
   "mcpServers": {
     "yandex-webmaster": {
-      "command": "npx",
-      "args": ["-y", "yandex-webmaster-mcp"],
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-webmaster-mcp/src/index.mjs"],
       "env": {
         "YANDEX_WEBMASTER_TOKEN": "your-oauth-token"
       }
@@ -39,14 +44,14 @@ Add to your MCP client config:
 To obtain an OAuth token interactively:
 
 ```bash
-npx yandex-webmaster-mcp auth
+node packages/yandex-webmaster-mcp/src/index.mjs auth
 ```
 
 This opens a browser for Yandex OAuth authorization and returns a token. Set the token as `YANDEX_WEBMASTER_TOKEN`.
 
 Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 
-## Tool Reference (24 tools)
+## Tool Reference (30 tools)
 
 ### Core (3)
 
@@ -90,7 +95,7 @@ Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-search-events-history` | Get search URL events history | `host_id`, `date_from?`, `date_to?` |
-| `get-search-events-samples` | Get sample URLs for search events | `host_id`, `event_type` (APPEARED/REMOVED), `limit?` (1-100, default: 10), `offset?` |
+| `get-search-events-samples` | Get sample URLs for search events | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
 
 ### Links (4)
 
@@ -116,11 +121,24 @@ Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 | `get-important-urls` | Get important URLs for a site | `host_id`, `limit?` (1-100), `offset?` |
 | `get-important-url-history` | Get history for a specific important URL | `host_id`, `url`, `date_from?`, `date_to?` |
 
-### Recrawl (1)
+### Recrawl (4)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-recrawl-quota` | Get recrawl quota (daily limit and remainder) | `host_id` |
+| `add-recrawl-url` | **Write.** Enqueue a URL for re-crawl; consumes daily quota | `host_id`, `url` |
+| `get-recrawl-queue` | List submitted recrawl tasks and their state | `host_id`, `limit?` (default: 10), `offset?` |
+| `get-recrawl-task` | Get the state of one recrawl task | `host_id`, `task_id` |
+
+### Host Management (3)
+
+These change your Webmaster account, not just read from it. There is no confirmation step.
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `add-host` | **Write.** Add a site to Webmaster (needs verification afterwards) | `host_url` (with protocol) |
+| `verify-host` | Get verification state and applicable verification methods | `host_id` |
+| `delete-host` | **Write.** Remove a site from Webmaster | `host_id` |
 
 ## Common Parameters
 

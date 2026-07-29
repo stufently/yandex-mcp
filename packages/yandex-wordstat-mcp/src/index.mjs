@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { alignDates, DAILY_MAX_AGE_DAYS } from './dates.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -95,20 +96,6 @@ async function runServer() {
     } catch {
       throw new Error(`Invalid JSON from API: ${text.substring(0, 200)}`);
     }
-  }
-
-  function validateDate(dateStr) {
-    if (!dateStr) return undefined;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      throw new Error(`Invalid date format: ${dateStr}. Use YYYY-MM-DD.`);
-    }
-    const d = new Date(`${dateStr}T00:00:00Z`);
-    if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${dateStr}`);
-    const [y, m, day] = dateStr.split('-').map(Number);
-    if (d.getUTCFullYear() !== y || d.getUTCMonth() + 1 !== m || d.getUTCDate() !== day) {
-      throw new Error(`Invalid calendar date: ${dateStr}`);
-    }
-    return dateStr;
   }
 
   // v2 ждёт google.protobuf.Timestamp (RFC3339), отдаём полуночь UTC
@@ -237,42 +224,9 @@ async function runServer() {
     return null;
   }
 
-  // --- Date helpers ---
-
-  function formatDate(d) {
-    return d.toISOString().split('T')[0];
-  }
-
-  function getDefaultDates(period) {
-    const now = new Date();
-    if (period === 'daily') {
-      const from = new Date(now);
-      from.setDate(from.getDate() - 60);
-      const to = new Date(now);
-      to.setDate(to.getDate() - 1);
-      return { fromDate: formatDate(from), toDate: formatDate(to) };
-    }
-    if (period === 'weekly') {
-      const to = new Date(now);
-      to.setDate(to.getDate() - ((to.getDay() + 6) % 7) - 1); // last Sunday
-      const from = new Date(to);
-      from.setFullYear(from.getFullYear() - 1);
-      const dayOfWeek = from.getDay();
-      const diff = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-      from.setDate(from.getDate() + diff);
-      return { fromDate: formatDate(from), toDate: formatDate(to) };
-    }
-    // monthly
-    const to = new Date(now.getFullYear(), now.getMonth(), 0); // last day of previous month
-    const from = new Date(to);
-    from.setFullYear(from.getFullYear() - 1);
-    from.setDate(1);
-    return { fromDate: formatDate(from), toDate: formatDate(to) };
-  }
-
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-wordstat', version: '2.0.0' });
+  const server = new McpServer({ name: 'yandex-wordstat', version: '2.1.0' });
 
   // Tool 1: get-regions-tree
   server.tool(
@@ -362,12 +316,15 @@ async function runServer() {
   // Tool 4: dynamics
   server.tool(
     'dynamics',
-    'Analyze search volume trends over time for a keyword.',
+    'Analyze search volume trends over time for a keyword. ' +
+      `Window rules enforced by the API: daily covers only the last ${DAILY_MAX_AGE_DAYS} days; ` +
+      'weekly must start on a Monday and end on a Sunday; monthly must span whole months. ' +
+      'Dates outside those rules are snapped to the nearest valid window and the shift is reported.',
     {
       phrase: z.string().max(400).describe('Keyword or phrase'),
       period: z.enum(['daily', 'weekly', 'monthly']).optional().describe('Aggregation period (default: monthly)'),
-      fromDate: z.string().optional().describe('Start date YYYY-MM-DD'),
-      toDate: z.string().optional().describe('End date YYYY-MM-DD'),
+      fromDate: z.string().optional().describe('Start date YYYY-MM-DD (snapped to a valid window boundary)'),
+      toDate: z.string().optional().describe('End date YYYY-MM-DD (snapped to a valid window boundary)'),
       regions: z.array(z.number()).optional().describe('Region IDs'),
       devices: z
         .array(z.enum(['desktop', 'phone', 'tablet']))
@@ -375,12 +332,7 @@ async function runServer() {
         .describe('Device types'),
     },
     async ({ phrase, period = 'monthly', fromDate, toDate, regions, devices }) => {
-      const validFrom = validateDate(fromDate);
-      const validTo = validateDate(toDate);
-
-      const defaults = getDefaultDates(period);
-      const from = validFrom || defaults.fromDate;
-      const to = validTo || defaults.toDate;
+      const { fromDate: from, toDate: to, adjustments } = alignDates(period, fromDate, toDate);
       const body = {
         phrase,
         period: PERIOD_MAP[period],
@@ -405,18 +357,19 @@ async function runServer() {
         trend = ` | Trend: ${changeNum > 0 ? '+' : ''}${changeNum.toFixed(1)}%`;
       }
 
+      const shifted = adjustments.length > 0 ? `\nAdjusted dates: ${adjustments.join('; ')}` : '';
       const summary =
         dynamics.length > 0
-          ? `"${phrase}" dynamics (${period}, ${from} → ${to})${trend}\n\n` +
+          ? `"${phrase}" dynamics (${period}, ${from} → ${to})${trend}${shifted}\n\n` +
             dynamics
               .slice(0, 24)
               .map((d) => `${d.date}: ${d.count.toLocaleString()}`)
               .join('\n')
-          : `No dynamics data for "${phrase}".`;
+          : `No dynamics data for "${phrase}" (${period}, ${from} → ${to}).${shifted}`;
 
       return {
         content: [{ type: 'text', text: summary }],
-        structuredContent: { dynamics, period, fromDate: from, toDate: to },
+        structuredContent: { dynamics, period, fromDate: from, toDate: to, adjustments },
       };
     },
   );

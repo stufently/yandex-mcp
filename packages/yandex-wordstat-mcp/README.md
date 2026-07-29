@@ -6,8 +6,13 @@ MCP server for Yandex Wordstat via **Yandex Cloud Search API v2**. Research keyw
 
 ## Installation
 
+Run from source — the npm name `yandex-wordstat-mcp` belongs to an unrelated publisher
+(see the note in the [root README](../../README.md)):
+
 ```bash
-npx yandex-wordstat-mcp
+git clone https://github.com/stufently/yandex-mcp.git
+cd yandex-mcp && bun install
+node packages/yandex-wordstat-mcp/src/index.mjs
 ```
 
 ## Configuration
@@ -18,8 +23,8 @@ Add to your MCP client config:
 {
   "mcpServers": {
     "yandex-wordstat": {
-      "command": "npx",
-      "args": ["-y", "yandex-wordstat-mcp"],
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-wordstat-mcp/src/index.mjs"],
       "env": {
         "WORDSTAT_API_KEY": "AQVN...",
         "WORDSTAT_FOLDER_ID": "b1g..."
@@ -101,10 +106,28 @@ Analyze search volume trends over time for a keyword.
 | `regions` | number[] | No | -- | Region IDs |
 | `devices` | enum[] | No | -- | Device types: `desktop`, `phone`, `tablet` |
 
+The API enforces window rules that are documented nowhere and are returned as raw gRPC
+errors when broken (verified against the live API on 2026-07-29):
+
+| Period | Rule |
+|--------|------|
+| `daily` | `fromDate` must be within the last 60 days — exactly 60 days back is rejected |
+| `weekly` | `fromDate` must be a Monday, `toDate` a Sunday, and the week must be over |
+| `monthly` | `fromDate` must be the 1st of a month, `toDate` the last day, and the month must be over |
+
+Dates you pass are snapped to the nearest valid window instead of being rejected; every
+shift is listed in `adjustments` in both the text summary and `structuredContent`.
+A range that falls inside a single week or month expands to that whole period. A range
+that covers only the current, unfinished week or month cannot be served at all — the API
+rejects it — so the tool says so and names the latest available `toDate` instead of
+forwarding a 400.
+
 Default date ranges by period:
-- `daily`: last 60 days
-- `weekly`: last ~1 year (Monday to Sunday boundaries)
-- `monthly`: last 12 months (1st to end of month boundaries)
+- `daily`: last 58 days (kept one day inside the limit so a request never expires on a UTC date rollover)
+- `weekly`: last 52 full weeks, Monday to Sunday
+- `monthly`: last 12 full months, 1st to end of month
+
+All date math is done in UTC.
 
 Returns an array of `{ date, count, share }` data points.
 

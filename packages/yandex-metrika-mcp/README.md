@@ -4,8 +4,13 @@ MCP server for Yandex Metrika API. Access web analytics data -- traffic summarie
 
 ## Installation
 
+Run from source — the npm name `yandex-metrika-mcp` belongs to an unrelated publisher
+(see the note in the [root README](../../README.md)):
+
 ```bash
-npx yandex-metrika-mcp
+git clone https://github.com/stufently/yandex-mcp.git
+cd yandex-mcp && bun install
+node packages/yandex-metrika-mcp/src/index.mjs
 ```
 
 ## Configuration
@@ -16,8 +21,8 @@ Add to your MCP client config:
 {
   "mcpServers": {
     "yandex-metrika": {
-      "command": "npx",
-      "args": ["-y", "yandex-metrika-mcp"],
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-metrika-mcp/src/index.mjs"],
       "env": {
         "YANDEX_METRIKA_TOKEN": "your-oauth-token"
       }
@@ -39,7 +44,7 @@ Add to your MCP client config:
 To obtain an OAuth token interactively:
 
 ```bash
-npx yandex-metrika-mcp auth
+node packages/yandex-metrika-mcp/src/index.mjs auth
 ```
 
 This opens a browser for Yandex OAuth authorization (scope: `metrika:read`) and returns a token. Set the token as `YANDEX_METRIKA_TOKEN`.

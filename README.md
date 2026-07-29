@@ -1,29 +1,36 @@
 # Yandex MCP
 
-A monorepo of MCP (Model Context Protocol) servers for Yandex APIs. Provides AI assistants with access to Yandex Search, Wordstat, Webmaster, and Metrika through a unified interface.
+A monorepo of MCP (Model Context Protocol) servers for Yandex APIs. Provides AI assistants with access to Yandex Search, Wordstat, Webmaster, Metrika, and Direct through a unified interface.
 
-Built for Russian and CIS market analysis -- keyword research, search analytics, site monitoring, and web traffic insights.
+Built for Russian and CIS market analysis -- keyword research, search analytics, site monitoring, web traffic insights, and ad campaign management.
 
 ## Packages
 
-| Package | Description | Tools | npm |
-|---------|-------------|-------|-----|
-| [yandex-search-mcp](packages/yandex-search-mcp) | Yandex Search API v2 (Cloud) | 1 | `npx yandex-search-mcp` |
-| [yandex-wordstat-mcp](packages/yandex-wordstat-mcp) | Yandex Wordstat API -- keyword research | 5 | `npx yandex-wordstat-mcp` |
-| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 24 | `npx yandex-webmaster-mcp` |
-| [yandex-metrika-mcp](packages/yandex-metrika-mcp) | Yandex Metrika API -- web analytics | 10 | `npx yandex-metrika-mcp` |
+| Package | Description | Tools |
+|---------|-------------|-------|
+| [yandex-search-mcp](packages/yandex-search-mcp) | Yandex Search API v2 (Cloud) | 1 |
+| [yandex-wordstat-mcp](packages/yandex-wordstat-mcp) | Yandex Wordstat (Cloud Search API v2) -- keyword research | 5 |
+| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 30 |
+| [yandex-metrika-mcp](packages/yandex-metrika-mcp) | Yandex Metrika API -- web analytics | 12 |
+| [yandex-direct-mcp](packages/yandex-direct-mcp) | Yandex Direct API v5 -- ad campaigns | 43 |
 
-**40 tools total** across all packages.
+**91 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
+
+> **Not on npm.** The names `yandex-search-mcp`, `yandex-wordstat-mcp`, `yandex-webmaster-mcp`
+> and `yandex-metrika-mcp` on the public registry belong to a **different publisher**
+> (`altrr2`, [altrr2/yandex-tools-mcp](https://github.com/altrr2/yandex-tools-mcp), first
+> published 2025-12-20 — three months before this repo existed). Do **not** `npx` those names
+> with your Yandex tokens in the environment: you would be handing credentials to unrelated
+> code. Run these servers from source, as shown below.
 
 ## Quick Start
 
-1. Install the package you need:
+1. Clone the repo and install dependencies:
 
 ```bash
-npx yandex-search-mcp
-npx yandex-wordstat-mcp
-npx yandex-webmaster-mcp
-npx yandex-metrika-mcp
+git clone https://github.com/stufently/yandex-mcp.git
+cd yandex-mcp
+bun install
 ```
 
 2. Set environment variables (see below).
@@ -31,8 +38,8 @@ npx yandex-metrika-mcp
 3. For packages that require OAuth tokens (Webmaster, Metrika), run the auth flow:
 
 ```bash
-npx yandex-webmaster-mcp auth
-npx yandex-metrika-mcp auth
+node packages/yandex-webmaster-mcp/src/index.mjs auth
+node packages/yandex-metrika-mcp/src/index.mjs auth
 ```
 
 Wordstat no longer uses OAuth: since v2.0 it talks to Yandex Cloud Search API v2 and needs a service-account API key (`WORDSTAT_API_KEY`) + folder ID (`WORDSTAT_FOLDER_ID`) — see [packages/yandex-wordstat-mcp](packages/yandex-wordstat-mcp).
@@ -41,36 +48,16 @@ Wordstat no longer uses OAuth: since v2.0 it talks to Yandex Cloud Search API v2
 
 ### For MCP clients (Claude Desktop, etc.)
 
-Add to your MCP client configuration. Example using `plugin.mcp.json`:
+Point the client at a checkout of this repo — see `plugin.mcp.json`, which uses absolute
+paths via `${CLAUDE_PLUGIN_ROOT}`:
 
 ```json
 {
   "mcpServers": {
-    "yandex-search": {
-      "command": "npx",
-      "args": ["-y", "yandex-search-mcp"],
-      "env": {
-        "YANDEX_SEARCH_API_KEY": "${YANDEX_SEARCH_API_KEY}",
-        "YANDEX_FOLDER_ID": "${YANDEX_FOLDER_ID}"
-      }
-    },
-    "yandex-wordstat": {
-      "command": "npx",
-      "args": ["-y", "yandex-wordstat-mcp"],
-      "env": {
-        "WORDSTAT_API_KEY": "${WORDSTAT_API_KEY}",
-        "WORDSTAT_FOLDER_ID": "${WORDSTAT_FOLDER_ID}"
-      }
-    },
     "yandex-webmaster": {
-      "command": "npx",
-      "args": ["-y", "yandex-webmaster-mcp"],
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-webmaster-mcp/src/index.mjs"],
       "env": { "YANDEX_WEBMASTER_TOKEN": "${YANDEX_WEBMASTER_TOKEN}" }
-    },
-    "yandex-metrika": {
-      "command": "npx",
-      "args": ["-y", "yandex-metrika-mcp"],
-      "env": { "YANDEX_METRIKA_TOKEN": "${YANDEX_METRIKA_TOKEN}" }
     }
   }
 }
@@ -98,6 +85,10 @@ The `.mcp.json` file runs servers directly from source with a shared `.env` file
     "yandex-metrika": {
       "command": "node",
       "args": ["--env-file=.env", "packages/yandex-metrika-mcp/src/index.mjs"]
+    },
+    "yandex-direct": {
+      "command": "node",
+      "args": ["--env-file=.env", "packages/yandex-direct-mcp/src/index.mjs"]
     }
   }
 }
@@ -113,6 +104,9 @@ The `.mcp.json` file runs servers directly from source with a shared `.env` file
 | `WORDSTAT_FOLDER_ID` | yandex-wordstat-mcp | Yandex Cloud folder ID for Search API v2 |
 | `YANDEX_WEBMASTER_TOKEN` | yandex-webmaster-mcp | OAuth token for Webmaster |
 | `YANDEX_METRIKA_TOKEN` | yandex-metrika-mcp | OAuth token for Metrika (scope: `metrika:read`) |
+| `YANDEX_DIRECT_TOKEN` | yandex-direct-mcp | OAuth token for Direct API v5 |
+| `YANDEX_DIRECT_CLIENT_LOGIN` | yandex-direct-mcp (agencies) | Client login to act on behalf of |
+| `YANDEX_DIRECT_SANDBOX` | yandex-direct-mcp (optional) | `true` to hit the Direct sandbox |
 | `YANDEX_CLIENT_ID` | OAuth flow (optional) | Yandex OAuth app client ID |
 | `YANDEX_CLIENT_SECRET` | OAuth flow (optional) | Yandex OAuth app client secret |
 
@@ -150,6 +144,12 @@ bun run lint:fix
 
 # Format code
 bun run format
+
+# Unit tests (pure helpers: date windows, series extraction, XML parsing)
+bun run test
+
+# Smoke test: start every server over stdio and query tools/list
+bun run smoke
 ```
 
 ### Tech Stack
@@ -163,25 +163,33 @@ bun run format
 
 ```
 packages/
-  yandex-search-mcp/      # 1 tool  - Yandex Search
-  yandex-wordstat-mcp/     # 5 tools - Keyword research
-  yandex-webmaster-mcp/    # 24 tools - Site analytics
-  yandex-metrika-mcp/      # 10 tools - Web analytics
+  yandex-search-mcp/       # 1 tool   - Yandex Search  (src/parse.mjs — XML parsing)
+  yandex-wordstat-mcp/     # 5 tools  - Keyword research (src/dates.mjs — API window rules)
+  yandex-webmaster-mcp/    # 30 tools - Site analytics  (src/series.mjs — time series shapes)
+  yandex-metrika-mcp/      # 12 tools - Web analytics
+  yandex-direct-mcp/       # 43 tools - Ad campaigns
+scripts/smoke-tools.mjs    # Starts every server and checks tools/list
 .claude/skills/            # Claude Code skills
 .mcp.json                  # Local dev config
 plugin.mcp.json            # Distribution config
 .claude-plugin/            # Plugin manifest
 ```
 
+Each package keeps its pure, testable helpers in separate modules next to `index.mjs`;
+tests live in `packages/*/test/*.test.mjs` and run without network access.
+
 ## Contributing
 
 Contributions are welcome. Please ensure:
 
-1. Code passes `bun run lint` with no errors.
+1. Code passes `bun run lint` and `bun run test` with no errors.
 2. All tools return both `content` (human-readable) and `structuredContent` (raw API data).
-3. API requests use `fetchWithRetry` with exponential backoff for 429/5xx errors.
-4. Dates are validated with strict calendar checking (no silent overflow).
-5. Tokens are never printed to stdout in full.
+3. The `content` text must not contradict `structuredContent` — a summary that reports
+   "0 data points" while the structured payload holds a full series is a bug, and was
+   the most common one in this repo's history.
+4. API requests use `fetchWithRetry` with exponential backoff for 429/5xx errors.
+5. Dates are validated with strict calendar checking (no silent overflow) in UTC.
+6. Tokens are never printed to stdout in full.
 
 ## License
 

@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { EMPTY_RESULT_ERROR_CODES, parseError, parseFound, parseSearchResults } from './parse.mjs';
 
 await runServer();
 
@@ -54,34 +55,7 @@ async function runServer() {
   }
 
   // --- XML Helpers ---
-
-  function cleanHtml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&#39;/g, "'")
-      .replace(/<[^>]+>/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function extractTag(xml, tag) {
-    const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i');
-    const m = xml.match(re);
-    return m ? m[1] : '';
-  }
-
-  function extractAllTags(xml, tag) {
-    const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'gi');
-    const results = [];
-    for (let m = re.exec(xml); m !== null; m = re.exec(xml)) {
-      results.push(m[1]);
-    }
-    return results;
-  }
+  // Сам разбор XML живёт в ./parse.mjs — он чистый и покрыт тестами.
 
   function detectLanguage(query) {
     const hasCyrillic = /[\u0400-\u04FF]/.test(query);
@@ -103,39 +77,9 @@ async function runServer() {
     kk: 'LOCALIZATION_KK',
   };
 
-  function parseSearchResults(xml) {
-    const groups = extractAllTags(xml, 'group');
-    if (groups.length === 0) return [];
-
-    return groups
-      .map((group, i) => {
-        const doc = extractTag(group, 'doc');
-        if (!doc) return null;
-
-        const url = cleanHtml(extractTag(doc, 'url'));
-        let domain = '';
-        try {
-          domain = new URL(url).hostname;
-        } catch {}
-
-        const title = cleanHtml(extractTag(doc, 'title'));
-        const headline = cleanHtml(extractTag(doc, 'headline'));
-        const passages = extractAllTags(doc, 'passage').map(cleanHtml).filter(Boolean);
-        const snippet = [headline, ...passages].filter(Boolean).join(' ');
-
-        const sizeStr = extractTag(doc, 'size');
-        const size = parseInt(sizeStr, 10) || 0;
-        const lang = cleanHtml(extractTag(doc, 'lang'));
-        const cachedUrl = cleanHtml(extractTag(doc, 'saved-copy-url'));
-
-        return { position: i + 1, url, domain, title, headline, passages, snippet, size, lang, cachedUrl };
-      })
-      .filter(Boolean);
-  }
-
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-search', version: '1.0.0' });
+  const server = new McpServer({ name: 'yandex-search', version: '2.0.0' });
 
   server.tool(
     'search',
@@ -197,7 +141,7 @@ async function runServer() {
       if (!data.rawData) {
         return {
           content: [{ type: 'text', text: `No results found for "${query}".` }],
-          structuredContent: { results: [], query, page, totalResults: 0 },
+          structuredContent: { results: [], query, page, returnedResults: 0, totalResults: 0 },
         };
       }
 
@@ -208,12 +152,21 @@ async function runServer() {
         throw new Error('Failed to decode base64 rawData from Search API');
       }
 
+      // Ошибка приезжает внутри XML с кодом 200 снаружи. Всё, кроме «ничего не нашлось»,
+      // обязано всплыть наверх: иначе исчерпанная квота выглядит как пустая выдача.
+      const apiError = parseError(xml);
+      if (apiError && !EMPTY_RESULT_ERROR_CODES.has(apiError.code)) {
+        throw new Error(`Search API error (XML code ${apiError.code ?? 'unknown'}): ${apiError.message}`);
+      }
+
+      const { total, human } = parseFound(xml);
       const results = parseSearchResults(xml);
 
       if (results.length === 0) {
+        const reason = apiError ? ` ${apiError.message}` : '';
         return {
-          content: [{ type: 'text', text: `No results found for "${query}".` }],
-          structuredContent: { results: [], query, page, totalResults: 0 },
+          content: [{ type: 'text', text: `No results found for "${query}".${reason}` }],
+          structuredContent: { results: [], query, page, returnedResults: 0, totalResults: total ?? 0 },
         };
       }
 
@@ -221,9 +174,18 @@ async function runServer() {
         .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet.substring(0, 150)}`)
         .join('\n\n');
 
+      const foundNote = total !== null ? ` of ${total.toLocaleString('en-US')} found${human ? ` (${human})` : ''}` : '';
+
       return {
-        content: [{ type: 'text', text: `Found ${results.length} results for "${query}":\n\n${summary}` }],
-        structuredContent: { results, query, page, totalResults: results.length },
+        content: [{ type: 'text', text: `Showing ${results.length}${foundNote} for "${query}":\n\n${summary}` }],
+        structuredContent: {
+          results,
+          query,
+          page,
+          returnedResults: results.length,
+          totalResults: total ?? results.length,
+          totalResultsHuman: human || null,
+        },
       };
     },
   );

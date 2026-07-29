@@ -26,16 +26,8 @@ jobs:
         run: bun run lint
 
   test:
-    name: Test packages
+    name: Test
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        package:
-          - yandex-search-mcp
-          - yandex-wordstat-mcp
-          - yandex-webmaster-mcp
-          - yandex-metrika-mcp
 
     steps:
       - name: Checkout
@@ -53,11 +45,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Verify package loads
-        run: node --input-type=module -e "await import('./packages/${{ matrix.package }}/src/index.mjs')" &
-        env:
-          YANDEX_METRIKA_TOKEN: test
-          YANDEX_WORDSTAT_TOKEN: test
-          YANDEX_WEBMASTER_TOKEN: test
-          YANDEX_SEARCH_USER: test
-          YANDEX_SEARCH_KEY: test
+      - name: Unit tests
+        run: node --test
+
+      # Сервер по природе не завершается, поэтому «просто импортировать» его нельзя:
+      # прежний шаг уводил импорт в фон через `&` и был зелёным даже при падении.
+      # Здесь поднимаем каждый сервер по-настоящему и спрашиваем tools/list.
+      - name: Smoke test MCP servers
+        run: node scripts/smoke-tools.mjs
