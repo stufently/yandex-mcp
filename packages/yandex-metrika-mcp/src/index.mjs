@@ -18,8 +18,12 @@ async function runServer() {
 
   function getToken() {
     const token = process.env.YANDEX_METRIKA_TOKEN;
+    // Never suggest `npx yandex-metrika-mcp` — that unscoped name belongs to another
+    // publisher, and this message appears while Yandex OAuth secrets are in the env.
     if (!token)
-      throw new Error('YANDEX_METRIKA_TOKEN is required. Run `npx yandex-metrika-mcp auth` or set it manually.');
+      throw new Error(
+        `YANDEX_METRIKA_TOKEN is required. Run \`node ${process.argv[1] ?? 'src/index.mjs'} auth\` or set it manually.`,
+      );
     return token;
   }
 

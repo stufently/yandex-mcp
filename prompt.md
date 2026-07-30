@@ -1,5 +1,12 @@
 # Задание: Yandex MCP — монорепо MCP-серверов для Yandex API
 
+> **Это ИСТОРИЧЕСКОЕ задание (2026-03), а не описание текущего состояния.** Репозиторий с тех
+> пор ушёл вперёд: пятый пакет (`yandex-direct-mcp`), другие счётчики тулов, Wordstat переехал
+> на Yandex Cloud Search API v2 (OAuth и `YANDEX_WORDSTAT_TOKEN` мертвы), пакеты публикуются в
+> скоуп **`@stufently/*`** — unscoped-имена `yandex-*-mcp` на npm принадлежат ЧУЖОМУ издателю.
+> Актуальное состояние — `README.md` и `CHANGELOG.md`. Не восстанавливай конфигурацию по этому
+> файлу: секции ниже помечены там, где они устарели.
+
 Написать с нуля монорепо из 4 MCP-серверов для Yandex API. Код должен быть production-ready.
 
 ## Порядок реализации
@@ -238,7 +245,7 @@ return {
 
 ## Пакет 1: yandex-search-mcp
 
-### npm: `yandex-search-mcp`
+### npm: `@stufently/yandex-search-mcp`
 
 ### Переменные окружения
 - `YANDEX_SEARCH_API_KEY` (обязательно) — API key из Yandex Cloud
@@ -321,14 +328,27 @@ inputSchema: {
 
 ## Пакет 2: yandex-wordstat-mcp
 
-### npm: `yandex-wordstat-mcp`
+### npm: `@stufently/yandex-wordstat-mcp`
 
-### Переменные окружения
-- `YANDEX_WORDSTAT_TOKEN` (обязательно) — OAuth токен
-- `YANDEX_CLIENT_ID` (опционально) — для OAuth flow
-- `YANDEX_CLIENT_SECRET` (опционально) — для OAuth flow
+> **⚠️ Вся эта секция описывает legacy-состояние на 2026-03 и БОЛЬШЕ НЕ ВЕРНА.** Яндекс закрыл
+> `api.wordstat.yandex.net` (все пути 404), OAuth у Wordstat удалён вместе с `src/auth.mjs`, а
+> `YANDEX_WORDSTAT_TOKEN` не читается кодом. Ни токен, ни эндпоинты `/v1/*` ниже восстанавливать
+> НЕЛЬЗЯ. Актуальный контракт — `packages/yandex-wordstat-mcp/README.md`; правила окон дат
+> (weekly с понедельника, monthly целыми месяцами, daily не старше 59 дней) — `src/dates.mjs`.
 
-### API
+### Переменные окружения (актуальные — с v2.0)
+- `WORDSTAT_API_KEY` (обязательно) — API-ключ сервисного аккаунта Yandex Cloud
+  (роль `search-api.webSearch.user`, scope `yc.search-api.execute`)
+- `WORDSTAT_FOLDER_ID` (обязательно) — folder ID в Yandex Cloud
+- Оба можно положить в `~/.config/yandex-cloud/wordstat.env` вместо env
+- OAuth-переменных у Wordstat НЕТ (`YANDEX_CLIENT_ID`/`SECRET` относятся только к Webmaster и Metrika)
+
+### API (актуальный — с v2.0)
+- URL: `https://searchapi.api.cloud.yandex.net/v2/wordstat`
+- Метод: POST (`/topRequests`, `/dynamics`, `/regions`, `/getRegionsTree`)
+- Заголовки: `Authorization: Api-Key {apiKey}`, `Content-Type: application/json`; в теле — `folderId`
+
+### API (legacy 2026-03, ЗАКРЫТ — только для истории)
 - URL: `https://api.wordstat.yandex.net`
 - Метод: POST (все эндпоинты)
 - Заголовки: `Content-Type: application/json; charset=utf-8`, `Authorization: Bearer {token}`
@@ -348,7 +368,7 @@ API-ключа Yandex Cloud и выходит с кодом 1. Самого OAut
 пакет ходит в Yandex Cloud Search API v2 по `WORDSTAT_API_KEY` (`src/auth.mjs` удалён).
 OAuth остался только у Webmaster и Metrika.
 
-### OAuth flow (auth.mjs)
+### OAuth flow (auth.mjs) — у Wordstat УДАЛЁН, шаблон актуален только для Webmaster/Metrika
 - Authorize URL: `https://oauth.yandex.com/authorize?response_type=code&client_id={clientId}`
 - Token URL: `https://oauth.yandex.com/token` (POST)
 - Body: `grant_type=authorization_code&code=...&client_id=...&client_secret=...`
@@ -424,7 +444,7 @@ inputSchema: {
 
 ## Пакет 3: yandex-webmaster-mcp
 
-### npm: `yandex-webmaster-mcp`
+### npm: `@stufently/yandex-webmaster-mcp`
 
 ### Переменные окружения
 - `YANDEX_WEBMASTER_TOKEN` (обязательно)
@@ -498,7 +518,7 @@ inputSchema: {
 
 ## Пакет 4: yandex-metrika-mcp
 
-### npm: `yandex-metrika-mcp`
+### npm: `@stufently/yandex-metrika-mcp`
 
 ### Переменные окружения
 - `YANDEX_METRIKA_TOKEN` (обязательно) — scope: `metrika:read`
@@ -671,8 +691,9 @@ Stat API параметры:
 YANDEX_SEARCH_API_KEY=
 YANDEX_FOLDER_ID=
 
-# Yandex Wordstat (https://oauth.yandex.com/)
-YANDEX_WORDSTAT_TOKEN=
+# Yandex Wordstat (Cloud Search API v2 — сервисный аккаунт, НЕ OAuth)
+WORDSTAT_API_KEY=
+WORDSTAT_FOLDER_ID=
 
 # Yandex Webmaster (https://oauth.yandex.com/)
 YANDEX_WEBMASTER_TOKEN=
@@ -854,9 +875,15 @@ async function runServer() {
 ```
 
 ### Package.json шаблон для каждого пакета
+
+Имя пакета — ТОЛЬКО в скоупе `@stufently/*`: unscoped `yandex-xxx-mcp` на npm занято чужим
+издателем. Имя в `bin` остаётся без скоупа (оно от скоупа не зависит). `repository.directory` и
+`publishConfig.access` обязательны: без первого падает публикация с `--provenance`, без второго
+scoped-пакет уедет приватным.
+
 ```json
 {
-  "name": "yandex-xxx-mcp",
+  "name": "@stufently/yandex-xxx-mcp",
   "version": "1.0.0",
   "description": "...",
   "type": "module",
@@ -866,6 +893,12 @@ async function runServer() {
   "scripts": { "start": "node src/index.mjs" },
   "engines": { "node": ">=22.0.0" },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stufently/yandex-mcp.git",
+    "directory": "packages/yandex-xxx-mcp"
+  },
+  "publishConfig": { "access": "public" },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "zod": "^4.3.6"
