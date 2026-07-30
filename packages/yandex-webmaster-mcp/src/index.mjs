@@ -22,7 +22,7 @@ async function runServer() {
     // publisher, and this message appears while Yandex OAuth secrets are in the env.
     if (!token)
       throw new Error(
-        `YANDEX_WEBMASTER_TOKEN is required. Run \`node ${process.argv[1] ?? 'src/index.mjs'} auth\` or set it manually.`,
+        `YANDEX_WEBMASTER_TOKEN is required. Run \`node "${process.argv[1] ?? 'src/index.mjs'}" auth\` or set it manually.`,
       );
     return token;
   }

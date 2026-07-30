@@ -38,7 +38,7 @@ packages/
 ├── yandex-wordstat-mcp/
 │   └── src/
 │       ├── index.mjs          # MCP сервер (5 tools)
-│       └── auth.mjs           # OAuth flow
+│       └── auth.mjs           # OAuth flow — УДАЛЁН в v2.0, не восстанавливать
 │   ├── package.json
 │   └── README.md
 ├── yandex-webmaster-mcp/
