@@ -16,7 +16,10 @@
   `YANDEX_WORDSTAT_TOKEN` + закрытый `api.wordstat.yandex.net` + OAuth-флоу, удалённый в v2.0.
   Добавлен баннер «это историческое задание», имена переведены в скоуп, актуальные креды и
   эндпоинты Wordstat описаны рядом с помеченным legacy-блоком, шаблон `package.json` приведён
-  к скоупу с `repository` и `publishConfig`.
+  к скоупу с `repository` и `publishConfig`. Вторым проходом ревью нашлись последние следы:
+  корневой `.env.example` вёл Wordstat на `oauth.yandex.com`, а дерево файлов в `prompt.md`
+  всё ещё показывало удалённый `src/auth.mjs` — при фрагментарном чтении агент восстановил бы
+  и то, и другое.
 
 ### Fixed
 - **Публикация с `--provenance` упала бы на всех пяти пакетах.** npm требует поле `repository`,
