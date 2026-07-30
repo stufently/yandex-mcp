@@ -1,5 +1,5 @@
 {
-  "name": "yandex-search-mcp",
+  "name": "@stufently/yandex-search-mcp",
   "version": "2.0.0",
   "description": "MCP server for Yandex Search API (v2, Cloud)",
   "type": "module",
@@ -19,6 +19,9 @@
     "node": ">=22.0.0"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "zod": "^4.3.6"

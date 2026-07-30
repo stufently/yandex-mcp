@@ -4,8 +4,9 @@ MCP server for Yandex Search API v2 (Cloud). Search the web through Yandex and g
 
 ## Installation
 
-Run from source — the npm name `yandex-search-mcp` belongs to an unrelated publisher
-(see the note in the [root README](../../README.md)):
+This package is published as **`@stufently/yandex-search-mcp`**; the unscoped name `yandex-search-mcp`
+belongs to an unrelated publisher (see the note in the [root README](../../README.md)).
+Nothing is on the scope yet, so run it from source:
 
 ```bash
 git clone https://github.com/stufently/yandex-mcp.git

@@ -13,6 +13,9 @@ jobs:
       contents: read
       id-token: write
 
+    # Пакеты публикуются под скоупом @stufently/*: неймспейсы без скоупа
+    # (yandex-search-mcp и т.д.) на npm принадлежат другому издателю (altrr2,
+    # первая публикация 2025-12-20), и публикация в них вернула бы 403.
     strategy:
       matrix:
         package:
@@ -20,6 +23,7 @@ jobs:
           - yandex-wordstat-mcp
           - yandex-webmaster-mcp
           - yandex-metrika-mcp
+          - yandex-direct-mcp
 
     steps:
       - name: Checkout

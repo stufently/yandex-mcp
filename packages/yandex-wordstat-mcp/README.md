@@ -6,8 +6,9 @@ MCP server for Yandex Wordstat via **Yandex Cloud Search API v2**. Research keyw
 
 ## Installation
 
-Run from source — the npm name `yandex-wordstat-mcp` belongs to an unrelated publisher
-(see the note in the [root README](../../README.md)):
+This package is published as **`@stufently/yandex-wordstat-mcp`**; the unscoped name `yandex-wordstat-mcp`
+belongs to an unrelated publisher (see the note in the [root README](../../README.md)).
+Nothing is on the scope yet, so run it from source:
 
 ```bash
 git clone https://github.com/stufently/yandex-mcp.git

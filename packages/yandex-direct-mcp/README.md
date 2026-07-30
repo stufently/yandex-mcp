@@ -11,9 +11,9 @@ ads, keywords, bids, bid modifiers, sitelinks, vCards, and reports. 43 tools.
 
 ## Installation
 
-Run from source. Note that this package has never been published to npm, and the sibling
-package names on the public registry belong to an unrelated publisher — see the note in the
-[root README](../../README.md).
+This package is published as **`@stufently/yandex-direct-mcp`**; unscoped `yandex-*-mcp`
+names on the public registry belong to an unrelated publisher (see the note in the
+[root README](../../README.md)). Nothing is on the scope yet, so run it from source:
 
 ```bash
 git clone https://github.com/stufently/yandex-mcp.git

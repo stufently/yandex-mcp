@@ -343,7 +343,10 @@ inputSchema: {
 - Из дерева строится flat Map<regionId, {label, parentId}> для быстрого lookup
 
 ### CLI команда
-`npx yandex-wordstat-mcp auth` — запускает OAuth flow
+`node packages/yandex-wordstat-mcp/src/index.mjs auth` — печатает инструкцию по получению
+API-ключа Yandex Cloud и выходит с кодом 1. Самого OAuth-флоу у Wordstat больше нет: с v2.0
+пакет ходит в Yandex Cloud Search API v2 по `WORDSTAT_API_KEY` (`src/auth.mjs` удалён).
+OAuth остался только у Webmaster и Metrika.
 
 ### OAuth flow (auth.mjs)
 - Authorize URL: `https://oauth.yandex.com/authorize?response_type=code&client_id={clientId}`

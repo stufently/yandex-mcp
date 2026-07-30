@@ -16,12 +16,14 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 
 **91 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
 
-> **Not on npm.** The names `yandex-search-mcp`, `yandex-wordstat-mcp`, `yandex-webmaster-mcp`
-> and `yandex-metrika-mcp` on the public registry belong to a **different publisher**
-> (`altrr2`, [altrr2/yandex-tools-mcp](https://github.com/altrr2/yandex-tools-mcp), first
-> published 2025-12-20 — three months before this repo existed). Do **not** `npx` those names
-> with your Yandex tokens in the environment: you would be handing credentials to unrelated
-> code. Run these servers from source, as shown below.
+> **Package names.** These packages are published under the **`@stufently/*` scope**
+> (`@stufently/yandex-webmaster-mcp` and so on). The *unscoped* names — `yandex-search-mcp`,
+> `yandex-wordstat-mcp`, `yandex-webmaster-mcp`, `yandex-metrika-mcp` — belong to a
+> **different publisher** on the public registry (`altrr2`,
+> [altrr2/yandex-tools-mcp](https://github.com/altrr2/yandex-tools-mcp), first published
+> 2025-12-20, three months before this repo existed). Never `npx` an unscoped name with your
+> Yandex tokens in the environment: that hands your credentials to unrelated code. Nothing has
+> been published to the scope yet, so for now run the servers from source, as shown below.
 
 ## Quick Start
 

@@ -4,8 +4,9 @@ MCP server for Yandex Webmaster API v4. Monitor site health, indexing status, se
 
 ## Installation
 
-Run from source — the npm name `yandex-webmaster-mcp` belongs to an unrelated publisher
-(see the note in the [root README](../../README.md)):
+This package is published as **`@stufently/yandex-webmaster-mcp`**; the unscoped name `yandex-webmaster-mcp`
+belongs to an unrelated publisher (see the note in the [root README](../../README.md)).
+Nothing is on the scope yet, so run it from source:
 
 ```bash
 git clone https://github.com/stufently/yandex-mcp.git
