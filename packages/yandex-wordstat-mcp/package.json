@@ -2,6 +2,18 @@
   "name": "@stufently/yandex-wordstat-mcp",
   "version": "2.1.0",
   "description": "MCP server for Yandex Wordstat API — keyword research for Russian/CIS markets",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "yandex",
+    "wordstat",
+    "keyword-research",
+    "search-volume",
+    "seo"
+  ],
   "type": "module",
   "main": "src/index.mjs",
   "bin": {
@@ -24,6 +36,11 @@
     "url": "git+https://github.com/stufently/yandex-mcp.git",
     "directory": "packages/yandex-wordstat-mcp"
   },
+  "homepage": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-wordstat-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/stufently/yandex-mcp/issues"
+  },
+  "author": "stufently",
   "publishConfig": {
     "access": "public"
   },

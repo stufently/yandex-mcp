@@ -2,6 +2,18 @@
   "name": "@stufently/yandex-search-mcp",
   "version": "2.0.0",
   "description": "MCP server for Yandex Search API (v2, Cloud)",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "yandex",
+    "yandex-search",
+    "search-api",
+    "serp",
+    "seo"
+  ],
   "type": "module",
   "main": "src/index.mjs",
   "bin": {
@@ -24,6 +36,11 @@
     "url": "git+https://github.com/stufently/yandex-mcp.git",
     "directory": "packages/yandex-search-mcp"
   },
+  "homepage": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-search-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/stufently/yandex-mcp/issues"
+  },
+  "author": "stufently",
   "publishConfig": {
     "access": "public"
   },

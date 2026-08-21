@@ -16,7 +16,7 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 
 **91 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
 
-> **Package names.** These packages are published under the **`@stufently/*` scope**
+> **Package names.** These packages will be published under the **`@stufently/*` scope**
 > (`@stufently/yandex-webmaster-mcp` and so on). The *unscoped* names — `yandex-search-mcp`,
 > `yandex-wordstat-mcp`, `yandex-webmaster-mcp`, `yandex-metrika-mcp` — belong to a
 > **different publisher** on the public registry (`altrr2`,
@@ -25,49 +25,102 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 > Yandex tokens in the environment: that hands your credentials to unrelated code. Nothing has
 > been published to the scope yet, so for now run the servers from source, as shown below.
 
-## Quick Start
+## Install
 
-1. Clone the repo and install dependencies:
+**Prerequisites for both options:** Node.js >= 22 and [Bun](https://bun.sh/) on your `PATH`.
+Bun is not optional — the repo carries a `bun.lock`, so Claude Code installs the plugin's
+dependencies with Bun and does not fall back to npm.
+
+### Option A — Claude Code plugin (recommended)
+
+This repo ships as a Claude Code plugin, so you do not have to hand-write five MCP entries.
+Add the repo as a marketplace and install:
+
+```
+/plugin marketplace add stufently/yandex-mcp
+/plugin install yandex-mcp@stufently
+```
+
+Or without the interactive picker:
+
+```bash
+claude plugin marketplace add stufently/yandex-mcp
+claude plugin install yandex-mcp@stufently --scope user
+```
+
+**What the plugin gives you over a hand-written MCP config:**
+
+| | Plugin | Manual MCP config |
+|---|---|---|
+| Setup | two commands | edit JSON, restart client |
+| All five servers | registered at once | five entries, one per server |
+| Paths | resolved via `${CLAUDE_PLUGIN_ROOT}` | you hardcode absolute paths |
+| Bundled skills | `yandex-keyword-research`, `yandex-competitive-analysis` installed too | not included — skills are Claude Code only |
+| Updates | `/plugin update yandex-mcp@stufently` | `git pull` and re-check your paths |
+
+The plugin installs the servers but **not the credentials** — Claude Code substitutes only
+`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${CLAUDE_PROJECT_DIR}`. Supply the Yandex
+tokens yourself, either by exporting them in your shell or by putting them in
+`~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "YANDEX_SEARCH_API_KEY": "...",
+    "YANDEX_FOLDER_ID": "...",
+    "WORDSTAT_API_KEY": "...",
+    "WORDSTAT_FOLDER_ID": "...",
+    "YANDEX_WEBMASTER_TOKEN": "...",
+    "YANDEX_METRIKA_TOKEN": "...",
+    "YANDEX_DIRECT_TOKEN": "..."
+  }
+}
+```
+
+Servers whose variables are missing simply fail on first use; the rest keep working, so you can
+install the plugin and set up one API at a time.
+
+### Option B — from source
 
 ```bash
 git clone https://github.com/stufently/yandex-mcp.git
 cd yandex-mcp
 bun install
+cp .env.example .env   # then fill it in
 ```
 
-2. Set environment variables (see below).
-
-3. For packages that require OAuth tokens (Webmaster, Metrika), run the auth flow:
+For Webmaster and Metrika you can mint an OAuth token with the built-in flow (needs
+`YANDEX_CLIENT_ID` / `YANDEX_CLIENT_SECRET` from your own Yandex OAuth app):
 
 ```bash
 node packages/yandex-webmaster-mcp/src/index.mjs auth
 node packages/yandex-metrika-mcp/src/index.mjs auth
 ```
 
-Wordstat no longer uses OAuth: since v2.0 it talks to Yandex Cloud Search API v2 and needs a service-account API key (`WORDSTAT_API_KEY`) + folder ID (`WORDSTAT_FOLDER_ID`) — see [packages/yandex-wordstat-mcp](packages/yandex-wordstat-mcp).
+Search and Wordstat do not use OAuth: both talk to Yandex Cloud and need a service-account API
+key plus a folder ID. Note that Metrika's helper requests only the `metrika:read` scope, so a
+token minted this way cannot run `create-counter` / `delete-counter`.
 
-## Configuration
+> Nothing is published to npm yet, so there is no `npx` form. Do not `npx` the **unscoped**
+> names — they belong to a different publisher (see the note above).
 
-### For MCP clients (Claude Desktop, etc.)
+## Client Configuration
 
-Point the client at a checkout of this repo — see `plugin.mcp.json`, which uses absolute
-paths via `${CLAUDE_PLUGIN_ROOT}`:
+All five servers speak stdio and take no arguments beyond the script path, so the same block
+works in any MCP client. Replace `/path/to/yandex-mcp` with your checkout and drop the servers
+you do not need.
 
-```json
-{
-  "mcpServers": {
-    "yandex-webmaster": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-webmaster-mcp/src/index.mjs"],
-      "env": { "YANDEX_WEBMASTER_TOKEN": "${YANDEX_WEBMASTER_TOKEN}" }
-    }
-  }
-}
+### Claude Code
+
+Easiest is the plugin (Option A). To wire it up by hand instead, per server:
+
+```bash
+claude mcp add yandex-wordstat --scope user \
+  --env WORDSTAT_API_KEY=... --env WORDSTAT_FOLDER_ID=... \
+  -- node /path/to/yandex-mcp/packages/yandex-wordstat-mcp/src/index.mjs
 ```
 
-### For local development
-
-The `.mcp.json` file runs servers directly from source with a shared `.env` file:
+Inside a clone, the checked-in `.mcp.json` already registers all five from `.env`:
 
 ```json
 {
@@ -96,6 +149,65 @@ The `.mcp.json` file runs servers directly from source with a shared `.env` file
 }
 ```
 
+Those paths are relative, so this one only works with the repo root as the working directory.
+
+### Claude Desktop
+
+`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS,
+`%APPDATA%\Claude\claude_desktop_config.json` on Windows,
+`~/.config/Claude/claude_desktop_config.json` on Linux:
+
+```json
+{
+  "mcpServers": {
+    "yandex-search": {
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-search-mcp/src/index.mjs"],
+      "env": {
+        "YANDEX_SEARCH_API_KEY": "your-cloud-api-key",
+        "YANDEX_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-wordstat": {
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-wordstat-mcp/src/index.mjs"],
+      "env": {
+        "WORDSTAT_API_KEY": "your-cloud-api-key",
+        "WORDSTAT_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-webmaster": {
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-webmaster-mcp/src/index.mjs"],
+      "env": { "YANDEX_WEBMASTER_TOKEN": "your-oauth-token" }
+    },
+    "yandex-metrika": {
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-metrika-mcp/src/index.mjs"],
+      "env": { "YANDEX_METRIKA_TOKEN": "your-oauth-token" }
+    },
+    "yandex-direct": {
+      "command": "node",
+      "args": ["/path/to/yandex-mcp/packages/yandex-direct-mcp/src/index.mjs"],
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "your-oauth-token",
+        "YANDEX_DIRECT_SANDBOX": "true"
+      }
+    }
+  }
+}
+```
+
+### Cursor
+
+Same shape, in `.cursor/mcp.json` for one project or `~/.cursor/mcp.json` globally — copy the
+block above verbatim.
+
+### Windsurf, Cline, and other stdio clients
+
+Any client that launches an MCP server as a subprocess takes the same `command` / `args` /
+`env` triple; only the file it lives in differs.
+
 ## Environment Variables
 
 | Variable | Required by | Description |
@@ -118,9 +230,62 @@ Copy `.env.example` to `.env` and fill in the values:
 cp .env.example .env
 ```
 
+You only need the variables for the servers you actually enable — each server reads its own
+and ignores the rest.
+
+## Common Prompts
+
+Once a server is connected, these are the kinds of requests it can answer. Each example maps
+onto real tools listed in the per-package READMEs.
+
+### yandex-search (1 tool)
+
+- "Search Yandex for «купить кондиционер» and show me the top 10 results with their domains."
+- "Who ranks on Yandex for «доставка пиццы» in region 2 (Saint Petersburg)? Give positions and titles."
+- "Search yandex.ru for «отзывы о клинике» with strict family mode and pull 20 results."
+- "Get page 2 of Yandex results for «ремонт ноутбуков Москва»."
+
+### yandex-wordstat (5 tools)
+
+- "How many people search «купить ноутбук» on Yandex per month, and what related queries come up?"
+- "Show the monthly trend for «горящие туры» over the last two years — is demand growing?"
+- "Which Russian regions search «кондиционер» the most? Show volume and affinity index for the top 20."
+- "Give me the Yandex region tree down to depth 2 so I can pick region IDs for filtering."
+- "Compare desktop vs phone demand for «доставка еды»."
+
+### yandex-webmaster (30 tools)
+
+- "List my verified sites in Yandex Webmaster with their SQI."
+- "What are my top 50 queries by clicks for example.com, and how did positions move?"
+- "Show indexing history for example.com and flag any sudden drop in pages in search."
+- "What site problems does Yandex report for example.com right now?"
+- "Send https://example.com/new-page for recrawl and tell me my remaining daily quota."
+- "Show broken internal links on example.com."
+
+### yandex-metrika (12 tools)
+
+- "Traffic summary for counter 12345678 last month — visits, users, bounce rate, average duration."
+- "Where does my traffic come from? Break it down by source for counter 12345678."
+- "Top 20 landing pages by pageviews for counter 12345678 last week."
+- "Which countries and cities do my visitors come from?"
+- "Custom report: `ym:s:visits` by `ym:s:trafficSource` and `ym:s:deviceCategory` for the last 7 days."
+
+### yandex-direct (43 tools)
+
+- "List my active Yandex Direct campaigns with their types and states."
+- "Show the keywords in campaign 123 together with their current search bids."
+- "Build a last-30-days campaign performance report with impressions, clicks, and cost."
+- "Pause campaign 123, then confirm its new state."
+- "Pull the GeoRegions dictionary so I can pick targeting IDs."
+
+> **Direct writes are live and unguarded.** `add_*`, `update_*`, `delete_*`, `set_keyword_bids`
+> and the archive/suspend tools hit the production API with no dry-run and no confirmation step,
+> and bids are expressed in micros (×10⁶). Set `YANDEX_DIRECT_SANDBOX=true` while experimenting.
+
 ## Skills
 
-This project includes Claude Code skills for common workflows:
+These are Claude Code skills, installed automatically with the plugin (Option A). They are not
+available to other MCP clients, which get the raw tools only.
 
 ### yandex-keyword-research
 
@@ -171,10 +336,12 @@ packages/
   yandex-metrika-mcp/      # 12 tools - Web analytics
   yandex-direct-mcp/       # 43 tools - Ad campaigns
 scripts/smoke-tools.mjs    # Starts every server and checks tools/list
-.claude/skills/            # Claude Code skills
+.claude/skills/            # Claude Code skills (shipped with the plugin)
 .mcp.json                  # Local dev config
-plugin.mcp.json            # Distribution config
-.claude-plugin/            # Plugin manifest
+plugin.mcp.json            # Distribution config — the 5 servers the plugin registers
+.claude-plugin/
+  plugin.json              # Plugin manifest
+  marketplace.json         # Marketplace catalog, so the repo can be added directly
 ```
 
 Each package keeps its pure, testable helpers in separate modules next to `index.mjs`;

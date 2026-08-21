@@ -1,0 +1,20 @@
+{
+  "name": "stufently",
+  "description": "MCP servers for Yandex APIs — search, keyword research, webmaster, analytics and ads",
+  "owner": {
+    "name": "stufently",
+    "url": "https://github.com/stufently"
+  },
+  "plugins": [
+    {
+      "name": "yandex-mcp",
+      "source": "./",
+      "description": "Yandex tools for Russian/CIS markets: Search, Wordstat keyword research, Webmaster analytics, Metrika, and Direct ad campaigns — 91 tools across 5 MCP servers",
+      "license": "MIT",
+      "homepage": "https://github.com/stufently/yandex-mcp",
+      "repository": "https://github.com/stufently/yandex-mcp",
+      "keywords": ["yandex", "seo", "search", "wordstat", "webmaster", "metrika", "direct", "russia", "mcp"],
+      "category": "seo"
+    }
+  ]
+}

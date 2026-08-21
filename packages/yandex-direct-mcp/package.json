@@ -2,6 +2,18 @@
   "name": "@stufently/yandex-direct-mcp",
   "version": "1.0.0",
   "description": "MCP server for Yandex Direct API v5 — campaigns, ads, keywords, reports",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "yandex",
+    "yandex-direct",
+    "ppc",
+    "advertising",
+    "ads"
+  ],
   "type": "module",
   "main": "src/index.mjs",
   "bin": {
@@ -24,6 +36,11 @@
     "url": "git+https://github.com/stufently/yandex-mcp.git",
     "directory": "packages/yandex-direct-mcp"
   },
+  "homepage": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-direct-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/stufently/yandex-mcp/issues"
+  },
+  "author": "stufently",
   "publishConfig": {
     "access": "public"
   },

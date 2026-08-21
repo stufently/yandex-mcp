@@ -1,9 +1,15 @@
 {
   "name": "yandex-mcp",
   "version": "1.0.0",
-  "description": "Yandex tools for Russian/CIS markets: search, keyword research (Wordstat), webmaster analytics, and Metrika",
+  "description": "Yandex tools for Russian/CIS markets: search, keyword research (Wordstat), webmaster analytics, Metrika, and Direct ad campaigns — 91 tools across 5 MCP servers",
   "license": "MIT",
-  "keywords": ["yandex", "seo", "search", "wordstat", "webmaster", "metrika", "russia", "mcp"],
-  "mcpServers": "../plugin.mcp.json",
-  "skills": "../.claude/skills/"
+  "author": {
+    "name": "stufently",
+    "url": "https://github.com/stufently"
+  },
+  "homepage": "https://github.com/stufently/yandex-mcp",
+  "repository": "https://github.com/stufently/yandex-mcp",
+  "keywords": ["yandex", "seo", "search", "wordstat", "webmaster", "metrika", "direct", "russia", "mcp", "claude-code"],
+  "mcpServers": "./plugin.mcp.json",
+  "skills": "./.claude/skills/"
 }
