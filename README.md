@@ -115,6 +115,14 @@ A write-capable token does not mean an unguarded delete: `delete-counter` refuse
 call passes `confirm: true`, and the refusal happens before any request reaches Yandex. See
 [Deleting a counter](packages/yandex-metrika-mcp/README.md#deleting-a-counter).
 
+The same rule holds across the monorepo: an operation that cannot be undone through the API it
+is called with asks for `confirm: true` first — `delete-counter` in Metrika,
+[`delete-host`](packages/yandex-webmaster-mcp/README.md#deleting-a-host) in Webmaster, and the
+[fourteen delete/update/bid tools](packages/yandex-direct-mcp/README.md#irreversible-tools-need-confirm-true)
+in Direct. Additive and reversible writes (`create-counter`, `add-host`, `add_*`, archive and
+suspend) run without one, so the confirmation stays a signal rather than a reflex. Search and
+Wordstat are read-only and have nothing to guard.
+
 > Nothing is published to npm yet, so there is no `npx` form. Do not `npx` the **unscoped**
 > names — they belong to a different publisher (see the note above).
 
@@ -293,9 +301,12 @@ onto real tools listed in the per-package READMEs.
 - "Pause campaign 123, then confirm its new state."
 - "Pull the GeoRegions dictionary so I can pick targeting IDs."
 
-> **Direct writes are live and unguarded.** `add_*`, `update_*`, `delete_*`, `set_keyword_bids`
-> and the archive/suspend tools hit the production API with no dry-run and no confirmation step,
-> and bids are expressed in micros (×10⁶). Set `YANDEX_DIRECT_SANDBOX=true` while experimenting.
+> **Direct writes are live.** Every write hits the production account — there is no dry-run.
+> The fourteen that cannot be undone (`delete_*`, `update_*` and the three bid `set_*` tools)
+> refuse unless the call passes `confirm: true`; `add_*`, `archive_*`/`unarchive_*`,
+> `suspend_*`/`resume_*` and `moderate_ads` have an inverse tool and run straight away. Bids are
+> expressed in micros (×10⁶). Set `YANDEX_DIRECT_SANDBOX=true` while experimenting. See
+> [Irreversible tools](packages/yandex-direct-mcp/README.md#irreversible-tools-need-confirm-true).
 
 ## Skills
 

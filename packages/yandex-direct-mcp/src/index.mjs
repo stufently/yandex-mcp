@@ -3,6 +3,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import {
+  CONFIRM_PARAM_DESCRIPTION,
+  describeIds,
+  describeItems,
+  destructiveAnnotations,
+  requireConfirmation,
+} from './confirm.mjs';
 import { formatDirectError, isRetryableDirectError, isRetrySafeMethod } from './errors.mjs';
 import { parseTsv } from './report.mjs';
 
@@ -287,8 +294,13 @@ async function runServer() {
   }
 
   /**
-   * Register an action tool (suspend, resume, archive, unarchive, delete, moderate).
+   * Register an action tool (suspend, resume, archive, unarchive, moderate).
    * Accepts an array of IDs and calls `service.{method}`.
+   *
+   * Every action registered this way has an inverse in this same server
+   * (suspend↔resume, archive↔unarchive), or leaves the entity itself untouched
+   * (moderate), so none of them needs confirmation. Deletion goes through
+   * {@link registerDeleteTool} instead.
    */
   function registerActionTool(server, toolName, service, method, description) {
     server.tool(
@@ -297,20 +309,62 @@ async function runServer() {
       {
         ids: z.array(z.number()).describe('Array of entity IDs to act on'),
       },
-      async ({ ids }) => {
-        const data = await apiRequest(service, method, {
-          SelectionCriteria: { Ids: ids },
-        });
+      async ({ ids }) => runAction(toolName, service, method, ids),
+    );
+  }
 
-        const resultKey = Object.keys(data.result || {})[0];
-        const items = resultKey ? data.result[resultKey] : [];
-        const count = Array.isArray(items) ? items.length : 0;
+  /** Shared body of the ID-list action tools, guarded and unguarded alike. */
+  async function runAction(toolName, service, method, ids) {
+    const data = await apiRequest(service, method, {
+      SelectionCriteria: { Ids: ids },
+    });
 
-        return {
-          content: [{ type: 'text', text: `${toolName}: ${method} applied to ${count} items.` }],
-          structuredContent: data.result,
-        };
+    const resultKey = Object.keys(data.result || {})[0];
+    const items = resultKey ? data.result[resultKey] : [];
+    const count = Array.isArray(items) ? items.length : 0;
+
+    return {
+      content: [{ type: 'text', text: `${toolName}: ${method} applied to ${count} items.` }],
+      structuredContent: data.result,
+    };
+  }
+
+  /**
+   * Register a deletion tool: same ID-list shape as {@link registerActionTool},
+   * plus the confirmation an irreversible call has to have.
+   *
+   * `confirm` is optional in the schema on purpose — a missing confirmation must
+   * come back as the explanatory refusal from `confirm.mjs`, not as a schema
+   * validation error the model cannot act on. Registered through `registerTool`
+   * because the annotations live in its config object and because the
+   * `server.tool(...)` overload is deprecated in the SDK.
+   */
+  function registerDeleteTool(server, toolName, service, description, { entity, inspect, title }) {
+    server.registerTool(
+      toolName,
+      {
+        description:
+          `${description} IRREVERSIBLE: ${entity} and the statistics attached to them are lost permanently —` +
+          ' re-adding creates new entities with new IDs, not the old ones back.' +
+          ' Requires `confirm: true` — without it the tool refuses and calls nothing.',
+        inputSchema: {
+          ids: z.array(z.number()).describe('Array of entity IDs to delete'),
+          confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+        },
+        annotations: destructiveAnnotations(title),
       },
+      requireConfirmation(
+        {
+          tool: toolName,
+          target: ({ ids }) => describeIds(ids),
+          consequence:
+            `Deleting ${entity} is irreversible: they and their accumulated statistics are gone for good,` +
+            ' and Yandex Direct offers no way to restore them.',
+          repeat: 'the same ids',
+          inspect,
+        },
+        ({ ids }) => runAction(toolName, service, 'delete', ids),
+      ),
     );
   }
 
@@ -365,50 +419,72 @@ async function runServer() {
 
   /**
    * Register an "update" tool. Accepts a JSON string of items to update.
+   *
+   * Always guarded by confirmation: an update overwrites fields in place, and
+   * Direct exposes no revision history, so the previous ad text, budget or
+   * strategy is unrecoverable the moment the call succeeds. That is a loss, not
+   * a reversible change, even though nothing is "deleted".
    */
-  function registerUpdateTool(server, toolName, service, description, itemsKey, itemsDesc) {
-    server.tool(
+  function registerUpdateTool(server, toolName, service, description, itemsKey, itemsDesc, { entity, inspect, title }) {
+    server.registerTool(
       toolName,
-      description,
       {
-        items_json: z.string().describe(itemsDesc),
+        description:
+          `${description} IRREVERSIBLE: the previous values of the updated ${entity} are overwritten and cannot be` +
+          ' read back from the API afterwards. Requires `confirm: true` — without it the tool refuses and calls nothing.',
+        inputSchema: {
+          items_json: z.string().describe(itemsDesc),
+          confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+        },
+        annotations: destructiveAnnotations(title),
       },
-      async ({ items_json }) => {
-        let items;
-        try {
-          items = JSON.parse(items_json);
-        } catch (e) {
-          throw new Error(`Invalid JSON in items_json: ${e.message}`);
-        }
-        if (!Array.isArray(items)) {
-          throw new Error('items_json must be a JSON array.');
-        }
+      requireConfirmation(
+        {
+          tool: toolName,
+          target: ({ items_json }) => describeItems(items_json),
+          consequence:
+            `Updating ${entity} overwrites their current values in place; Direct keeps no revision history,` +
+            ' so the previous values cannot be recovered through this API.',
+          repeat: 'the same items_json',
+          inspect,
+        },
+        async ({ items_json }) => {
+          let items;
+          try {
+            items = JSON.parse(items_json);
+          } catch (e) {
+            throw new Error(`Invalid JSON in items_json: ${e.message}`);
+          }
+          if (!Array.isArray(items)) {
+            throw new Error('items_json must be a JSON array.');
+          }
 
-        const data = await apiRequest(service, 'update', {
-          [itemsKey]: items,
-        });
+          const data = await apiRequest(service, 'update', {
+            [itemsKey]: items,
+          });
 
-        const updateResults = data.result?.UpdateResults || [];
-        const ok = updateResults.filter((r) => r.Id).length;
-        const errors = updateResults.filter((r) => r.Errors || r.Warnings);
+          const updateResults = data.result?.UpdateResults || [];
+          const ok = updateResults.filter((r) => r.Id).length;
+          const errors = updateResults.filter((r) => r.Errors || r.Warnings);
 
-        let summary = `${toolName}: ${ok} items updated successfully.`;
-        if (errors.length > 0) {
-          const errMsgs = errors
-            .map((r) => {
-              const errs = (r.Errors || []).map((e) => `Error ${e.Code}: ${e.Message}`);
-              const warns = (r.Warnings || []).map((w) => `Warning ${w.Code}: ${w.Message}`);
-              return [...errs, ...warns].join('; ');
-            })
-            .join(' | ');
-          summary += ` Errors/Warnings: ${errMsgs}`;
-        }
+          let summary = `${toolName}: ${ok} items updated successfully.`;
+          if (errors.length > 0) {
+            const errMsgs = errors
+              .map((r) => {
+                const errs = (r.Errors || []).map((e) => `Error ${e.Code}: ${e.Message}`);
+                const warns = (r.Warnings || []).map((w) => `Warning ${w.Code}: ${w.Message}`);
+                return [...errs, ...warns].join('; ');
+              })
+              .join(' | ');
+            summary += ` Errors/Warnings: ${errMsgs}`;
+          }
 
-        return {
-          content: [{ type: 'text', text: summary }],
-          structuredContent: data.result,
-        };
-      },
+          return {
+            content: [{ type: 'text', text: summary }],
+            structuredContent: data.result,
+          };
+        },
+      ),
     );
   }
 
@@ -450,9 +526,14 @@ async function runServer() {
     'Update existing campaigns. Pass a JSON array of campaign objects with Id and fields to update.',
     'Campaigns',
     'JSON array of campaign objects with Id, e.g. [{"Id":12345,"Name":"Updated Name"}]',
+    { entity: 'campaigns', inspect: 'get_campaigns', title: 'Update Direct campaigns' },
   );
 
-  registerActionTool(server, 'delete_campaigns', 'campaigns', 'delete', 'Delete campaigns by IDs.');
+  registerDeleteTool(server, 'delete_campaigns', 'campaigns', 'Delete campaigns by IDs.', {
+    entity: 'campaigns',
+    inspect: 'get_campaigns',
+    title: 'Delete Direct campaigns',
+  });
   registerActionTool(server, 'archive_campaigns', 'campaigns', 'archive', 'Archive campaigns by IDs.');
   registerActionTool(server, 'unarchive_campaigns', 'campaigns', 'unarchive', 'Unarchive campaigns by IDs.');
   registerActionTool(server, 'suspend_campaigns', 'campaigns', 'suspend', 'Suspend (pause) campaigns by IDs.');
@@ -489,9 +570,14 @@ async function runServer() {
     'Update existing ad groups. Pass a JSON array with Id and fields to update.',
     'AdGroups',
     'JSON array of ad group objects with Id, e.g. [{"Id":67890,"Name":"Updated Group"}]',
+    { entity: 'ad groups', inspect: 'get_adgroups', title: 'Update Direct ad groups' },
   );
 
-  registerActionTool(server, 'delete_adgroups', 'adgroups', 'delete', 'Delete ad groups by IDs.');
+  registerDeleteTool(server, 'delete_adgroups', 'adgroups', 'Delete ad groups by IDs.', {
+    entity: 'ad groups',
+    inspect: 'get_adgroups',
+    title: 'Delete Direct ad groups',
+  });
   registerActionTool(server, 'archive_adgroups', 'adgroups', 'archive', 'Archive ad groups by IDs.');
   registerActionTool(server, 'unarchive_adgroups', 'adgroups', 'unarchive', 'Unarchive ad groups by IDs.');
 
@@ -529,9 +615,14 @@ async function runServer() {
     'Update existing ads. Pass a JSON array with Id and fields to update.',
     'Ads',
     'JSON array of ad objects with Id, e.g. [{"Id":11111,"TextAd":{"Title":"Updated Title"}}]',
+    { entity: 'ads', inspect: 'get_ads', title: 'Update Direct ads' },
   );
 
-  registerActionTool(server, 'delete_ads', 'ads', 'delete', 'Delete ads by IDs.');
+  registerDeleteTool(server, 'delete_ads', 'ads', 'Delete ads by IDs.', {
+    entity: 'ads',
+    inspect: 'get_ads',
+    title: 'Delete Direct ads',
+  });
   registerActionTool(server, 'archive_ads', 'ads', 'archive', 'Archive ads by IDs.');
   registerActionTool(server, 'unarchive_ads', 'ads', 'unarchive', 'Unarchive ads by IDs.');
   registerActionTool(server, 'moderate_ads', 'ads', 'moderate', 'Send ads for moderation by IDs.');
@@ -568,9 +659,14 @@ async function runServer() {
     'Update existing keywords. Pass a JSON array with Id and fields to update.',
     'Keywords',
     'JSON array of keyword objects with Id, e.g. [{"Id":22222,"Keyword":"updated keyword text"}]',
+    { entity: 'keywords', inspect: 'get_keywords', title: 'Update Direct keywords' },
   );
 
-  registerActionTool(server, 'delete_keywords', 'keywords', 'delete', 'Delete keywords by IDs.');
+  registerDeleteTool(server, 'delete_keywords', 'keywords', 'Delete keywords by IDs.', {
+    entity: 'keywords',
+    inspect: 'get_keywords',
+    title: 'Delete Direct keywords',
+  });
   registerActionTool(server, 'suspend_keywords', 'keywords', 'suspend', 'Suspend keywords by IDs.');
   registerActionTool(server, 'resume_keywords', 'keywords', 'resume', 'Resume keywords by IDs.');
 
@@ -591,67 +687,107 @@ async function runServer() {
   );
 
   // set keyword bids (custom)
-  server.tool(
+  //
+  // Guarded: a bid is what the account pays per click. The call overwrites the
+  // current value with no way to read the old one back, so a mistaken bid is
+  // both unrecoverable and immediately expensive.
+  server.registerTool(
     'set_keyword_bids',
-    'Set keyword bids. Pass a JSON array of bid objects with KeywordId, SearchBid (in micros), and/or NetworkBid (in micros).',
     {
-      bids_json: z
-        .string()
-        .describe('JSON array of bid objects, e.g. [{"KeywordId":12345,"SearchBid":30000000,"NetworkBid":10000000}]'),
+      description:
+        'Set keyword bids. Pass a JSON array of bid objects with KeywordId, SearchBid (in micros), and/or NetworkBid (in micros).' +
+        ' SPENDS MONEY and is IRREVERSIBLE: bids decide the cost per click, the previous bid is overwritten and cannot be' +
+        ' read back from the API. Requires `confirm: true` — without it the tool refuses and calls nothing.',
+      inputSchema: {
+        bids_json: z
+          .string()
+          .describe('JSON array of bid objects, e.g. [{"KeywordId":12345,"SearchBid":30000000,"NetworkBid":10000000}]'),
+        confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+      },
+      annotations: destructiveAnnotations('Set Direct keyword bids'),
     },
-    async ({ bids_json }) => {
-      let bids;
-      try {
-        bids = JSON.parse(bids_json);
-      } catch (e) {
-        throw new Error(`Invalid JSON in bids_json: ${e.message}`);
-      }
-      if (!Array.isArray(bids)) {
-        throw new Error('bids_json must be a JSON array.');
-      }
+    requireConfirmation(
+      {
+        tool: 'set_keyword_bids',
+        target: ({ bids_json }) => describeItems(bids_json),
+        consequence:
+          'Bids decide what the account pays per click, so this spends real money. The previous bids are overwritten' +
+          ' in place and Direct offers no way to read them back afterwards.',
+        repeat: 'the same bids_json',
+        inspect: 'get_keyword_bids',
+      },
+      async ({ bids_json }) => {
+        let bids;
+        try {
+          bids = JSON.parse(bids_json);
+        } catch (e) {
+          throw new Error(`Invalid JSON in bids_json: ${e.message}`);
+        }
+        if (!Array.isArray(bids)) {
+          throw new Error('bids_json must be a JSON array.');
+        }
 
-      const data = await apiRequest('keywordbids', 'set', { KeywordBids: bids });
-      const results = data.result?.SetResults || [];
-      const ok = results.filter((r) => r.KeywordId).length;
+        const data = await apiRequest('keywordbids', 'set', { KeywordBids: bids });
+        const results = data.result?.SetResults || [];
+        const ok = results.filter((r) => r.KeywordId).length;
 
-      return {
-        content: [{ type: 'text', text: `set_keyword_bids: ${ok} bids set.` }],
-        structuredContent: data.result,
-      };
-    },
+        return {
+          content: [{ type: 'text', text: `set_keyword_bids: ${ok} bids set.` }],
+          structuredContent: data.result,
+        };
+      },
+    ),
   );
 
   // set auto keyword bids (custom)
-  server.tool(
+  server.registerTool(
     'set_auto_keyword_bids',
-    'Set automatic keyword bids (strategy-level). Pass a JSON array of auto-bid objects. Common fields: CampaignId, AdGroupId, KeywordId, Bid, ContextBid, and strategy parameters.',
     {
-      bids_json: z
-        .string()
-        .describe(
-          'JSON array of auto-bid setting objects, e.g. [{"CampaignId":123,"AdGroupId":456,"MaxBid":50000000}]',
-        ),
+      description:
+        'Set automatic keyword bids (strategy-level). Pass a JSON array of auto-bid objects. Common fields: CampaignId, AdGroupId, KeywordId, Bid, ContextBid, and strategy parameters.' +
+        ' SPENDS MONEY and is IRREVERSIBLE: these settings drive automatic bidding, the previous settings are overwritten' +
+        ' and cannot be read back from the API. Requires `confirm: true` — without it the tool refuses and calls nothing.',
+      inputSchema: {
+        bids_json: z
+          .string()
+          .describe(
+            'JSON array of auto-bid setting objects, e.g. [{"CampaignId":123,"AdGroupId":456,"MaxBid":50000000}]',
+          ),
+        confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+      },
+      annotations: destructiveAnnotations('Set Direct automatic keyword bids'),
     },
-    async ({ bids_json }) => {
-      let bids;
-      try {
-        bids = JSON.parse(bids_json);
-      } catch (e) {
-        throw new Error(`Invalid JSON in bids_json: ${e.message}`);
-      }
-      if (!Array.isArray(bids)) {
-        throw new Error('bids_json must be a JSON array.');
-      }
+    requireConfirmation(
+      {
+        tool: 'set_auto_keyword_bids',
+        target: ({ bids_json }) => describeItems(bids_json),
+        consequence:
+          'Automatic bidding settings decide what the account pays per click, so this spends real money.' +
+          ' The previous settings are overwritten in place and Direct offers no way to read them back afterwards.',
+        repeat: 'the same bids_json',
+        inspect: 'get_keyword_bids',
+      },
+      async ({ bids_json }) => {
+        let bids;
+        try {
+          bids = JSON.parse(bids_json);
+        } catch (e) {
+          throw new Error(`Invalid JSON in bids_json: ${e.message}`);
+        }
+        if (!Array.isArray(bids)) {
+          throw new Error('bids_json must be a JSON array.');
+        }
 
-      const data = await apiRequest('keywordbids', 'setAuto', { KeywordBids: bids });
-      const results = data.result?.SetAutoResults || [];
-      const ok = results.filter((r) => r.KeywordId || r.AdGroupId || r.CampaignId).length;
+        const data = await apiRequest('keywordbids', 'setAuto', { KeywordBids: bids });
+        const results = data.result?.SetAutoResults || [];
+        const ok = results.filter((r) => r.KeywordId || r.AdGroupId || r.CampaignId).length;
 
-      return {
-        content: [{ type: 'text', text: `set_auto_keyword_bids: ${ok} auto bids set.` }],
-        structuredContent: data.result,
-      };
-    },
+        return {
+          content: [{ type: 'text', text: `set_auto_keyword_bids: ${ok} auto bids set.` }],
+          structuredContent: data.result,
+        };
+      },
+    ),
   );
 
   // ===========================
@@ -683,37 +819,60 @@ async function runServer() {
   );
 
   // set bid modifiers (custom)
-  server.tool(
+  server.registerTool(
     'set_bid_modifiers',
-    'Update bid modifier values. Pass a JSON array of objects with Id and the new adjustment value.',
     {
-      modifiers_json: z
-        .string()
-        .describe('JSON array of bid modifier update objects, e.g. [{"Id":11111,"BidModifier":120}]'),
+      description:
+        'Update bid modifier values. Pass a JSON array of objects with Id and the new adjustment value.' +
+        ' SPENDS MONEY and is IRREVERSIBLE: modifiers multiply the bid actually paid, the previous values are' +
+        ' overwritten and cannot be read back from the API.' +
+        ' Requires `confirm: true` — without it the tool refuses and calls nothing.',
+      inputSchema: {
+        modifiers_json: z
+          .string()
+          .describe('JSON array of bid modifier update objects, e.g. [{"Id":11111,"BidModifier":120}]'),
+        confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+      },
+      annotations: destructiveAnnotations('Set Direct bid modifiers'),
     },
-    async ({ modifiers_json }) => {
-      let modifiers;
-      try {
-        modifiers = JSON.parse(modifiers_json);
-      } catch (e) {
-        throw new Error(`Invalid JSON in modifiers_json: ${e.message}`);
-      }
-      if (!Array.isArray(modifiers)) {
-        throw new Error('modifiers_json must be a JSON array.');
-      }
+    requireConfirmation(
+      {
+        tool: 'set_bid_modifiers',
+        target: ({ modifiers_json }) => describeItems(modifiers_json),
+        consequence:
+          'Bid modifiers multiply the bid the account actually pays, so this spends real money.' +
+          ' The previous values are overwritten in place and Direct offers no way to read them back afterwards.',
+        repeat: 'the same modifiers_json',
+        inspect: 'get_bid_modifiers',
+      },
+      async ({ modifiers_json }) => {
+        let modifiers;
+        try {
+          modifiers = JSON.parse(modifiers_json);
+        } catch (e) {
+          throw new Error(`Invalid JSON in modifiers_json: ${e.message}`);
+        }
+        if (!Array.isArray(modifiers)) {
+          throw new Error('modifiers_json must be a JSON array.');
+        }
 
-      const data = await apiRequest('bidmodifiers', 'set', { BidModifiers: modifiers });
-      const results = data.result?.SetResults || [];
-      const ok = results.filter((r) => r.Id).length;
+        const data = await apiRequest('bidmodifiers', 'set', { BidModifiers: modifiers });
+        const results = data.result?.SetResults || [];
+        const ok = results.filter((r) => r.Id).length;
 
-      return {
-        content: [{ type: 'text', text: `set_bid_modifiers: ${ok} modifiers set.` }],
-        structuredContent: data.result,
-      };
-    },
+        return {
+          content: [{ type: 'text', text: `set_bid_modifiers: ${ok} modifiers set.` }],
+          structuredContent: data.result,
+        };
+      },
+    ),
   );
 
-  registerActionTool(server, 'delete_bid_modifiers', 'bidmodifiers', 'delete', 'Delete bid modifiers by IDs.');
+  registerDeleteTool(server, 'delete_bid_modifiers', 'bidmodifiers', 'Delete bid modifiers by IDs.', {
+    entity: 'bid modifiers',
+    inspect: 'get_bid_modifiers',
+    title: 'Delete Direct bid modifiers',
+  });
 
   // ===========================
   // Sitelinks (3 tools)
@@ -738,7 +897,11 @@ async function runServer() {
     'JSON array of sitelink set objects, e.g. [{"Sitelinks":[{"Title":"About","Href":"https://example.com/about"},{"Title":"Contacts","Href":"https://example.com/contacts"}]}]',
   );
 
-  registerActionTool(server, 'delete_sitelinks', 'sitelinks', 'delete', 'Delete sitelink sets by IDs.');
+  registerDeleteTool(server, 'delete_sitelinks', 'sitelinks', 'Delete sitelink sets by IDs.', {
+    entity: 'sitelink sets',
+    inspect: 'get_sitelinks',
+    title: 'Delete Direct sitelink sets',
+  });
 
   // ===========================
   // VCards (3 tools)
@@ -763,7 +926,11 @@ async function runServer() {
     'JSON array of VCard objects, e.g. [{"CampaignId":12345,"Country":"Россия","City":"Москва","CompanyName":"My Company","WorkTime":"0;6;9;0;18;0","Phone":{"CountryCode":"+7","CityCode":"495","PhoneNumber":"1234567"}}]',
   );
 
-  registerActionTool(server, 'delete_vcards', 'vcards', 'delete', 'Delete VCards by IDs.');
+  registerDeleteTool(server, 'delete_vcards', 'vcards', 'Delete VCards by IDs.', {
+    entity: 'VCards',
+    inspect: 'get_vcards',
+    title: 'Delete Direct VCards',
+  });
 
   // ===========================
   // Reports (1 tool)

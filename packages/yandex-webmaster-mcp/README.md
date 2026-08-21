@@ -133,13 +133,49 @@ Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 
 ### Host Management (3)
 
-These change your Webmaster account, not just read from it. There is no confirmation step.
+These change your Webmaster account, not just read from it.
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `add-host` | **Write.** Add a site to Webmaster (needs verification afterwards) | `host_url` (with protocol) |
+| `add-host` | **Write.** Add a site to Webmaster (needs verification afterwards). Additive — undone by `delete-host` | `host_url` (with protocol) |
 | `verify-host` | Get verification state and applicable verification methods | `host_id` |
-| `delete-host` | **Write.** Remove a site from Webmaster | `host_id` |
+| `delete-host` | **Write.** Remove a site from Webmaster. Irreversible — see [Deleting a host](#deleting-a-host). **Needs `confirm: true`** | `host_id`, `confirm` |
+
+#### Deleting a host
+
+`delete-host` is the only irreversible tool here, and it refuses to run unless the call carries
+`confirm: true`:
+
+```json
+{ "host_id": "https:example.com:443", "confirm": true }
+```
+
+Called without it, the tool returns an error result and sends **nothing** to the Webmaster API:
+
+```
+Refused: `delete-host` requires explicit confirmation.
+
+Removing host https:example.com:443 from Yandex Webmaster is irreversible — the site's
+verification, its accumulated indexing and search-query history, and its sitemap and
+important-URL settings go with it. Adding the same site back creates a fresh host that must be
+verified again and starts with no history.
+
+Nothing was sent to the Webmaster API — no host was touched.
+
+To go ahead, call `delete-host` again with host_id https:example.com:443 and `confirm: true`.
+To check which site this host ID stands for first, call `get-host-info` or `list-hosts`.
+```
+
+`confirm` is optional in the JSON schema on purpose: a missing confirmation has to come back as
+that explanation, not as a schema validation error a model cannot act on. Only a literal `true`
+counts — `"true"`, `1` and `"yes"` are refused, because a guess at the protocol is not a
+decision to delete anything. The tool is also marked `destructiveHint: true` in its MCP
+annotations, so clients that surface tool risk can show it before the call.
+
+The other two writes are deliberately left unguarded: `add-host` is additive and undone by
+`delete-host`, and `add-recrawl-url` only queues a URL for re-crawl against a daily quota that
+replenishes. A confirmation on every write would train callers to pass `confirm: true` by
+reflex, which is exactly what would defeat it on the one call that matters.
 
 ## Common Parameters
 

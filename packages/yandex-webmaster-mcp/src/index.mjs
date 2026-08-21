@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { CONFIRM_PARAM_DESCRIPTION, createDeleteHostHandler } from './confirm.mjs';
 import { dateParams } from './dates.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 
@@ -827,15 +828,35 @@ async function runServer() {
   );
 
   // delete-host
-  server.tool(
+  //
+  // Registered through `registerTool` rather than the `server.tool(...)` used by
+  // the tools above: `tool()` is deprecated in the SDK, and this is the one tool
+  // that needs annotations, which the config object carries directly.
+  // `confirm` is optional in the schema on purpose — a missing confirmation must
+  // come back as the explanatory refusal from `confirm.mjs`, not as a schema
+  // validation error the model cannot act on.
+  server.registerTool(
     'delete-host',
-    'Remove a host from Yandex Webmaster.',
     {
-      host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
+      description:
+        'Remove a host (site) from Yandex Webmaster. IRREVERSIBLE: verification, indexing and search-query history,' +
+        ' sitemaps and important-URL settings are lost permanently; re-adding the site starts from scratch.' +
+        ' Requires `confirm: true` — without it the tool refuses and calls nothing.',
+      inputSchema: {
+        host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
+        confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+      },
+      annotations: {
+        title: 'Delete Webmaster host',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
-    async ({ host_id }) => {
+    createDeleteHostHandler(async (hostId) => {
       const userId = await getUserId();
-      const url = `${API_BASE}/user/${userId}/hosts/${host_id}`;
+      const url = `${API_BASE}/user/${userId}/hosts/${hostId}`;
       const response = await fetchWithRetry(url, {
         method: 'DELETE',
         headers: {
@@ -846,10 +867,8 @@ async function runServer() {
         const errorText = await response.text();
         throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
       }
-      return {
-        content: [{ type: 'text', text: `Host ${host_id} deleted.` }],
-      };
-    },
+      return undefined;
+    }),
   );
 
   const transport = new StdioServerTransport();
