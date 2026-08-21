@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { CONFIRM_PARAM_DESCRIPTION, createDeleteCounterHandler } from './confirm.mjs';
 import { scopeHint, WRITE_SCOPE } from './scopes.mjs';
 
 const command = process.argv[2];
@@ -278,24 +279,33 @@ async function runServer() {
   );
 
   // 5. delete-counter
-  server.tool(
+  //
+  // Registered through `registerTool` rather than the `server.tool(...)` used by
+  // the tools above: `tool()` is deprecated in the SDK, and this is the one tool
+  // that needs annotations, which the config object carries directly.
+  // `confirm` is optional in the schema on purpose — a missing confirmation must
+  // come back as the explanatory refusal from `confirm.mjs`, not as a schema
+  // validation error the model cannot act on.
+  server.registerTool(
     'delete-counter',
-    `Delete a Metrika counter. Irreversible. Requires an OAuth token with the \`${WRITE_SCOPE}\` scope; a read-only token fails with 403.`,
     {
-      counter_id: z.number().describe('Counter ID to delete'),
+      description:
+        'Delete a Metrika counter. IRREVERSIBLE: the counter and all its collected statistics are lost permanently.' +
+        ` Requires \`confirm: true\` — without it the tool refuses and calls nothing.` +
+        ` Also requires an OAuth token with the \`${WRITE_SCOPE}\` scope; a read-only token fails with 403.`,
+      inputSchema: {
+        counter_id: z.number().describe('Counter ID to delete'),
+        confirm: z.boolean().optional().describe(CONFIRM_PARAM_DESCRIPTION),
+      },
+      annotations: {
+        title: 'Delete Metrika counter',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
-    async ({ counter_id }) => {
-      const data = await managementRequestDelete(`/counter/${counter_id}`);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Counter ${counter_id} deleted successfully.`,
-          },
-        ],
-        structuredContent: data,
-      };
-    },
+    createDeleteCounterHandler((counterId) => managementRequestDelete(`/counter/${counterId}`)),
   );
 
   // === Reporting (6 tools) ===

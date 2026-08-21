@@ -68,6 +68,9 @@ The two write tools then fail with a 403 whose message names the missing scope. 
 say so in their own descriptions, so a model can tell the difference between "not allowed" and
 "broken" before calling them.
 
+A write-capable token no longer means an unguarded delete: `delete-counter` requires an explicit
+`confirm: true` regardless of scope — see [Deleting a counter](#deleting-a-counter).
+
 Note: The Metrika API uses `Authorization: OAuth {token}` (not Bearer).
 
 ## Tool Reference (12 tools)
@@ -80,7 +83,42 @@ Note: The Metrika API uses `Authorization: OAuth {token}` (not Bearer).
 | `get-counter` | Get details for a specific counter | `counter_id` |
 | `get-goals` | Get goals for a counter | `counter_id` |
 | `create-counter` | Create a new counter (add a site). **Needs `metrika:write`** | `name`, `site`, `mirrors?`, `time_zone_name?`, `gdpr_agreement_accepted?` |
-| `delete-counter` | Delete a counter. Irreversible. **Needs `metrika:write`** | `counter_id` |
+| `delete-counter` | Delete a counter. Irreversible — see [Deleting a counter](#deleting-a-counter). **Needs `confirm: true` and `metrika:write`** | `counter_id`, `confirm` |
+
+#### Deleting a counter
+
+`delete-counter` is the only irreversible tool here, and it refuses to run unless the call
+carries `confirm: true`:
+
+```json
+{ "counter_id": 12345, "confirm": true }
+```
+
+Called without it, the tool returns an error result and sends **nothing** to the Metrika API:
+
+```
+Refused: `delete-counter` requires explicit confirmation.
+
+Deleting counter 12345 is irreversible — the counter and every statistic it has collected are
+gone for good. Yandex cannot restore them, and creating a new counter for the same site does
+not bring the history back.
+
+Nothing was sent to the Metrika API — no counter was touched.
+
+To go ahead, call `delete-counter` again with counter_id 12345 and `confirm: true`. To check
+which site this counter belongs to first, call `get-counter`.
+```
+
+`confirm` is optional in the JSON schema on purpose: a missing confirmation has to come back as
+that explanation, not as a schema validation error a model cannot act on. Only a literal
+`true` counts — `"true"`, `1` and `"yes"` are refused, because a guess at the protocol is not a
+decision to delete anything. The tool is also marked `destructiveHint: true` in its MCP
+annotations, so clients that surface tool risk can show it before the call.
+
+Why the parameter exists: until the default OAuth scope included `metrika:write`, an accidental
+`delete-counter` was stopped by the 403 a read-only token produced. Fixing that 403 (so setup
+works the first time) removed the only real brake, and "Irreversible" in a description is a
+hope that the model reads carefully, not a guard.
 
 ### Reporting (6)
 

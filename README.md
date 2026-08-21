@@ -111,6 +111,10 @@ YANDEX_METRIKA_SCOPE="metrika:read" node packages/yandex-metrika-mcp/src/index.m
 The two write tools then fail with a 403 that names the missing scope, instead of a bare
 permission error.
 
+A write-capable token does not mean an unguarded delete: `delete-counter` refuses unless the
+call passes `confirm: true`, and the refusal happens before any request reaches Yandex. See
+[Deleting a counter](packages/yandex-metrika-mcp/README.md#deleting-a-counter).
+
 > Nothing is published to npm yet, so there is no `npx` form. Do not `npx` the **unscoped**
 > names — they belong to a different publisher (see the note above).
 
