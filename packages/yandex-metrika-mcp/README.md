@@ -36,7 +36,8 @@ Add to your MCP client config:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `YANDEX_METRIKA_TOKEN` | Yes | OAuth token with `metrika:read` scope |
+| `YANDEX_METRIKA_TOKEN` | Yes | OAuth token. `metrika:read` covers the 10 read tools; `metrika:write` is also required by `create-counter` and `delete-counter` |
+| `YANDEX_METRIKA_SCOPE` | No | Override the scopes the auth flow requests. Default: `metrika:read metrika:write` |
 | `YANDEX_CLIENT_ID` | For auth flow | Yandex OAuth app client ID |
 | `YANDEX_CLIENT_SECRET` | For auth flow | Yandex OAuth app client secret |
 
@@ -48,7 +49,24 @@ To obtain an OAuth token interactively:
 node packages/yandex-metrika-mcp/src/index.mjs auth
 ```
 
-This opens a browser for Yandex OAuth authorization (scope: `metrika:read`) and returns a token. Set the token as `YANDEX_METRIKA_TOKEN`.
+This opens a browser for Yandex OAuth authorization and returns a token. Set it as
+`YANDEX_METRIKA_TOKEN`.
+
+### Scopes
+
+The helper requests **`metrika:read metrika:write`** by default. The write scope is not
+optional decoration: `create-counter` and `delete-counter` are rejected with HTTP 403 without
+it, and the rejection arrives at the moment you try to create a counter, not at setup time.
+
+For a token that can only read, ask for less:
+
+```bash
+YANDEX_METRIKA_SCOPE="metrika:read" node packages/yandex-metrika-mcp/src/index.mjs auth
+```
+
+The two write tools then fail with a 403 whose message names the missing scope. Both tools also
+say so in their own descriptions, so a model can tell the difference between "not allowed" and
+"broken" before calling them.
 
 Note: The Metrika API uses `Authorization: OAuth {token}` (not Bearer).
 
@@ -61,8 +79,8 @@ Note: The Metrika API uses `Authorization: OAuth {token}` (not Bearer).
 | `get-counters` | List all Metrika counters (sites) | -- |
 | `get-counter` | Get details for a specific counter | `counter_id` |
 | `get-goals` | Get goals for a counter | `counter_id` |
-| `create-counter` | Create a new counter (add a site) | `name`, `site`, `mirrors?`, `time_zone_name?`, `gdpr_agreement_accepted?` |
-| `delete-counter` | Delete a counter | `counter_id` |
+| `create-counter` | Create a new counter (add a site). **Needs `metrika:write`** | `name`, `site`, `mirrors?`, `time_zone_name?`, `gdpr_agreement_accepted?` |
+| `delete-counter` | Delete a counter. Irreversible. **Needs `metrika:write`** | `counter_id` |
 
 ### Reporting (6)
 

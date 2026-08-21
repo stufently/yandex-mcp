@@ -49,6 +49,10 @@ export async function runAuth() {
   }
 
   const data = await response.json();
-  console.error(`\nToken obtained: ${data.access_token.substring(0, 8)}...`);
-  console.error('Set this as YANDEX_WEBMASTER_TOKEN environment variable.');
+  // Printed in full, on stderr, in a command the user ran themselves and whose
+  // whole purpose is to hand them this value. Truncating it to 8 characters
+  // made the very next instruction ("set this as ...") impossible to follow.
+  console.error('\nToken obtained. Set it as YANDEX_WEBMASTER_TOKEN:\n');
+  console.error(`YANDEX_WEBMASTER_TOKEN=${data.access_token}\n`);
+  console.error('Treat it like a password: it is not printed again.');
 }

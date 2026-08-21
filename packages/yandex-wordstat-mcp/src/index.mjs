@@ -226,7 +226,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-wordstat', version: '2.1.0' });
+  const server = new McpServer({ name: 'yandex-wordstat', version: '2.2.0' });
 
   // Tool 1: get-regions-tree
   server.tool(

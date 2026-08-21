@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { dateParams } from './dates.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 
 const command = process.argv[2];
@@ -66,20 +67,6 @@ async function runServer() {
     } catch {
       throw new Error(`Invalid JSON from API: ${text.substring(0, 200)}`);
     }
-  }
-
-  function validateDate(dateStr) {
-    if (!dateStr) return undefined;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      throw new Error(`Invalid date format: ${dateStr}. Use YYYY-MM-DD.`);
-    }
-    const d = new Date(`${dateStr}T00:00:00Z`);
-    if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${dateStr}`);
-    const [y, m, day] = dateStr.split('-').map(Number);
-    if (d.getUTCFullYear() !== y || d.getUTCMonth() + 1 !== m || d.getUTCDate() !== day) {
-      throw new Error(`Invalid calendar date: ${dateStr}`);
-    }
-    return dateStr;
   }
 
   // --- User ID Cache ---
@@ -155,15 +142,6 @@ async function runServer() {
     return `/user/${userId}/hosts/${hostId}${suffix}`;
   }
 
-  function dateParams(dateFrom, dateTo) {
-    const params = {};
-    const vFrom = validateDate(dateFrom);
-    const vTo = validateDate(dateTo);
-    if (vFrom) params.date_from = new Date(`${vFrom}T00:00:00Z`).toISOString();
-    if (vTo) params.date_to = new Date(`${vTo}T00:00:00Z`).toISOString();
-    return params;
-  }
-
   function omitKey(obj, key) {
     const { [key]: _dropped, ...rest } = obj;
     return rest;
@@ -178,7 +156,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-webmaster', version: '1.1.0' });
+  const server = new McpServer({ name: 'yandex-webmaster', version: '2.2.0' });
 
   // === Core (3 tools) ===
 
@@ -261,7 +239,10 @@ async function runServer() {
       date_to: z.string().optional().describe('End date YYYY-MM-DD'),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(await hostUrl(host_id, '/sqi-history'), dateParams(date_from, date_to));
+      // Dates first: hostUrl() can hit /user on a cold cache, and an invalid
+      // range should not cost a network round trip before it is rejected.
+      const dates = dateParams(date_from, date_to);
+      const data = await apiRequest(await hostUrl(host_id, '/sqi-history'), dates);
       return {
         content: [{ type: 'text', text: formatSeries('SQI history', data) }],
         structuredContent: data,
@@ -378,7 +359,8 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(await hostUrl(host_id, '/indexing/history'), dateParams(date_from, date_to));
+      const dates = dateParams(date_from, date_to);
+      const data = await apiRequest(await hostUrl(host_id, '/indexing/history'), dates);
       return {
         content: [{ type: 'text', text: formatSeries('Indexing history', data) }],
         structuredContent: data,
@@ -415,10 +397,8 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(
-        await hostUrl(host_id, '/search-urls/in-search/history'),
-        dateParams(date_from, date_to),
-      );
+      const dates = dateParams(date_from, date_to);
+      const data = await apiRequest(await hostUrl(host_id, '/search-urls/in-search/history'), dates);
       return {
         content: [{ type: 'text', text: formatSeries('In-search history', data) }],
         structuredContent: data,
@@ -460,10 +440,8 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(
-        await hostUrl(host_id, '/search-urls/events/history'),
-        dateParams(date_from, date_to),
-      );
+      const dates = dateParams(date_from, date_to);
+      const data = await apiRequest(await hostUrl(host_id, '/search-urls/events/history'), dates);
       return {
         content: [{ type: 'text', text: formatSeries('Search events history', data) }],
         structuredContent: data,
@@ -545,7 +523,8 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(await hostUrl(host_id, '/links/external/history'), dateParams(date_from, date_to));
+      const dates = dateParams(date_from, date_to);
+      const data = await apiRequest(await hostUrl(host_id, '/links/external/history'), dates);
       return {
         content: [{ type: 'text', text: formatSeries('External links history', data) }],
         structuredContent: data,
@@ -587,10 +566,8 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, date_from, date_to }) => {
-      const data = await apiRequest(
-        await hostUrl(host_id, '/links/internal/broken/history'),
-        dateParams(date_from, date_to),
-      );
+      const dates = dateParams(date_from, date_to);
+      const data = await apiRequest(await hostUrl(host_id, '/links/internal/broken/history'), dates);
       return {
         content: [{ type: 'text', text: formatSeries('Broken internal links history', data) }],
         structuredContent: data,
@@ -695,8 +672,9 @@ async function runServer() {
       date_to: z.string().optional(),
     },
     async ({ host_id, url: targetUrl, date_from, date_to }) => {
+      const dates = dateParams(date_from, date_to);
       const data = await apiRequest(await hostUrl(host_id, '/important-urls/history'), {
-        ...dateParams(date_from, date_to),
+        ...dates,
         url: targetUrl,
       });
       return {

@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { scopeHint, WRITE_SCOPE } from './scopes.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -119,7 +120,9 @@ async function runServer() {
     });
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Metrika API error (${response.status}): ${errorText.substring(0, 500)}`);
+      throw new Error(
+        `Metrika API error (${response.status}): ${errorText.substring(0, 500)}${scopeHint(response.status)}`,
+      );
     }
     return safeJsonParse(response);
   }
@@ -132,7 +135,9 @@ async function runServer() {
     });
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Metrika API error (${response.status}): ${errorText.substring(0, 500)}`);
+      throw new Error(
+        `Metrika API error (${response.status}): ${errorText.substring(0, 500)}${scopeHint(response.status)}`,
+      );
     }
     if (response.headers.get('content-type')?.includes('application/json')) {
       return safeJsonParse(response);
@@ -180,7 +185,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-metrika', version: '1.0.0' });
+  const server = new McpServer({ name: 'yandex-metrika', version: '2.2.0' });
 
   // === Management (5 tools) ===
 
@@ -238,7 +243,7 @@ async function runServer() {
   // 4. create-counter
   server.tool(
     'create-counter',
-    'Create a new Metrika counter (add a site).',
+    `Create a new Metrika counter (add a site). Requires an OAuth token with the \`${WRITE_SCOPE}\` scope; a read-only token fails with 403.`,
     {
       name: z.string().describe('Counter name'),
       site: z.string().describe('Site domain (e.g. "example.com")'),
@@ -255,7 +260,7 @@ async function runServer() {
       if (gdpr_agreement_accepted) params.gdpr_agreement_accepted = 1;
 
       const qs = Object.keys(params).length
-        ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()
+        ? `?${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()}`
         : '';
 
       const data = await managementRequestPost(`/counters${qs}`, { counter: counterData });
@@ -275,7 +280,7 @@ async function runServer() {
   // 5. delete-counter
   server.tool(
     'delete-counter',
-    'Delete a Metrika counter.',
+    `Delete a Metrika counter. Irreversible. Requires an OAuth token with the \`${WRITE_SCOPE}\` scope; a read-only token fails with 403.`,
     {
       counter_id: z.number().describe('Counter ID to delete'),
     },

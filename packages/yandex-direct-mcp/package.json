@@ -1,6 +1,6 @@
 {
   "name": "@stufently/yandex-direct-mcp",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "description": "MCP server for Yandex Direct API v5 — campaigns, ads, keywords, reports",
   "keywords": [
     "mcp",

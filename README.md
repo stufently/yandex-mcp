@@ -98,8 +98,18 @@ node packages/yandex-metrika-mcp/src/index.mjs auth
 ```
 
 Search and Wordstat do not use OAuth: both talk to Yandex Cloud and need a service-account API
-key plus a folder ID. Note that Metrika's helper requests only the `metrika:read` scope, so a
-token minted this way cannot run `create-counter` / `delete-counter`.
+key plus a folder ID.
+
+The Metrika helper requests `metrika:read metrika:write`, because `create-counter` and
+`delete-counter` are refused with HTTP 403 by a read-only token. To keep a token that cannot
+modify anything, narrow the scope explicitly:
+
+```bash
+YANDEX_METRIKA_SCOPE="metrika:read" node packages/yandex-metrika-mcp/src/index.mjs auth
+```
+
+The two write tools then fail with a 403 that names the missing scope, instead of a bare
+permission error.
 
 > Nothing is published to npm yet, so there is no `npx` form. Do not `npx` the **unscoped**
 > names — they belong to a different publisher (see the note above).
@@ -217,7 +227,8 @@ Any client that launches an MCP server as a subprocess takes the same `command` 
 | `WORDSTAT_API_KEY` | yandex-wordstat-mcp | Yandex Cloud API key (service account, role `search-api.webSearch.user`) |
 | `WORDSTAT_FOLDER_ID` | yandex-wordstat-mcp | Yandex Cloud folder ID for Search API v2 |
 | `YANDEX_WEBMASTER_TOKEN` | yandex-webmaster-mcp | OAuth token for Webmaster |
-| `YANDEX_METRIKA_TOKEN` | yandex-metrika-mcp | OAuth token for Metrika (scope: `metrika:read`) |
+| `YANDEX_METRIKA_TOKEN` | yandex-metrika-mcp | OAuth token for Metrika (`metrika:read` to read, `metrika:write` also needed for counter tools) |
+| `YANDEX_METRIKA_SCOPE` | OAuth flow (optional) | Override requested scopes; default `metrika:read metrika:write` |
 | `YANDEX_DIRECT_TOKEN` | yandex-direct-mcp | OAuth token for Direct API v5 |
 | `YANDEX_DIRECT_CLIENT_LOGIN` | yandex-direct-mcp (agencies) | Client login to act on behalf of |
 | `YANDEX_DIRECT_SANDBOX` | yandex-direct-mcp (optional) | `true` to hit the Direct sandbox |

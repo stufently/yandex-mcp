@@ -3,6 +3,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { formatDirectError, isRetryableDirectError, isRetrySafeMethod } from './errors.mjs';
+import { parseTsv } from './report.mjs';
 
 await runServer();
 
@@ -20,6 +22,23 @@ async function runServer() {
   }
 
   // --- Shared utilities ---
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function backoffDelay(attempt) {
+    return Math.min(1000 * 2 ** attempt, 10000);
+  }
+
+  /** Honour Retry-After (seconds or HTTP-date), else fall back to backoff. */
+  function retryAfterDelay(response, attempt) {
+    const retryAfter = response.headers.get('Retry-After');
+    const parsed = retryAfter
+      ? Number.isFinite(Number(retryAfter))
+        ? Number(retryAfter) * 1000
+        : Math.max(0, new Date(retryAfter).getTime() - Date.now())
+      : 0;
+    return parsed > 0 ? Math.min(parsed, 30000) : backoffDelay(attempt);
+  }
 
   async function fetchWithRetry(url, options, maxRetries = 3) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -76,34 +95,69 @@ async function runServer() {
 
   // --- API request (standard services) ---
 
-  async function apiRequest(service, method, params) {
+  /**
+   * One JSON-RPC call to a Direct service, owning the ENTIRE retry policy.
+   *
+   * It deliberately does not go through `fetchWithRetry`: nesting that inside a
+   * retry loop multiplied the budgets (up to 16 physical requests for one call)
+   * and, worse, kept replaying writes at the HTTP layer even once the JSON layer
+   * had been taught not to. `maxAttempts` here is the total number of requests
+   * that will ever leave the process.
+   *
+   * Retry policy, by what the failure tells us about the server's state:
+   *   429            — Direct rejected the call outright, so nothing was applied.
+   *                    Safe to replay even for writes.
+   *   5xx / network  — ambiguous: a write may already have taken effect.
+   *                    Replayed for reads only.
+   *   HTTP 200 with a transient `error` body (52/1000/1001/1002) — same
+   *                    ambiguity, same rule. Direct signals these with status
+   *                    200, which is why a status-based retry never saw them.
+   */
+  async function apiRequest(service, method, params, maxAttempts = 4) {
     const url = `${API_BASE}/${service}`;
-    const body = { method, params };
+    const payload = JSON.stringify({ method, params });
+    const readOnly = isRetrySafeMethod(method);
 
-    const response = await fetchWithRetry(url, {
-      method: 'POST',
-      headers: baseHeaders(),
-      body: JSON.stringify(body),
-    });
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const last = attempt === maxAttempts - 1;
+      let response;
 
-    const data = await safeJsonParse(response);
-
-    if (data.error) {
-      const e = data.error;
-      const retryable = ['52', '1000', '1001', '1002'];
-      if (retryable.includes(String(e.error_code))) {
-        // Already handled by fetchWithRetry for HTTP-level errors,
-        // but Direct may return 200 with error body for transient issues.
-        throw new Error(
-          `Yandex Direct API error ${e.error_code}: ${e.error_string}. ${e.error_detail || ''} (request_id: ${e.request_id || 'N/A'})`,
-        );
+      try {
+        response = await fetch(url, { method: 'POST', headers: baseHeaders(), body: payload });
+      } catch (err) {
+        if (last || !readOnly) {
+          throw new Error(`Network error calling ${service}.${method}: ${err.message}`);
+        }
+        await sleep(backoffDelay(attempt));
+        continue;
       }
-      throw new Error(
-        `Yandex Direct API error ${e.error_code}: ${e.error_string}. ${e.error_detail || ''} (request_id: ${e.request_id || 'N/A'})`,
-      );
-    }
 
-    return data;
+      if (response.status === 429) {
+        if (last) {
+          throw new Error(`Rate limited by Direct on ${service}.${method} after ${maxAttempts} attempts.`);
+        }
+        await sleep(retryAfterDelay(response, attempt));
+        continue;
+      }
+
+      if (response.status >= 500) {
+        if (last || !readOnly) {
+          const text = await response.text();
+          throw new Error(`Direct API error (${response.status}) on ${service}.${method}: ${text.substring(0, 500)}`);
+        }
+        await sleep(retryAfterDelay(response, attempt));
+        continue;
+      }
+
+      const data = await safeJsonParse(response);
+      if (!data.error) return data;
+
+      const message = formatDirectError(data.error);
+      if (!isRetryableDirectError(data.error.error_code) || !readOnly) throw new Error(message);
+      if (last) throw new Error(`${message} (after ${maxAttempts} attempts)`);
+
+      await sleep(backoffDelay(attempt));
+    }
   }
 
   // --- Reports API request ---
@@ -112,9 +166,15 @@ async function runServer() {
     const url = `${API_BASE}/reports`;
     const headers = {
       ...baseHeaders(),
+      // Pin the response language so the payload does not vary with the
+      // account's interface locale. The parser is structural and never matches
+      // on text, but a deterministic response keeps error strings readable too.
+      'Accept-Language': 'en',
       processingMode: 'auto',
       returnMoneyInMicros: 'false',
       skipReportHeader: 'true',
+      // Suppresses the "Total"/"Итого" row at the source — the only
+      // language-independent way to be rid of it.
       skipReportSummary: 'true',
     };
 
@@ -154,36 +214,6 @@ async function runServer() {
     }
 
     throw new Error('Report generation failed: max polling attempts exceeded.');
-  }
-
-  function parseTsv(tsv) {
-    // Strip BOM
-    if (tsv.charCodeAt(0) === 0xfeff) {
-      tsv = tsv.slice(1);
-    }
-
-    const lines = tsv.split('\n').filter((line) => {
-      if (!line.trim()) return false;
-      if (line.startsWith('Total') || line.startsWith('Итого')) return false;
-      return true;
-    });
-
-    if (lines.length === 0) return [];
-
-    const headers = lines[0].split('\t');
-    const rows = [];
-    const limit = Math.min(lines.length, 501); // headers + 500 data rows
-
-    for (let i = 1; i < limit; i++) {
-      const values = lines[i].split('\t');
-      const row = {};
-      for (let j = 0; j < headers.length; j++) {
-        row[headers[j]] = values[j] ?? '';
-      }
-      rows.push(row);
-    }
-
-    return rows;
   }
 
   // --- Factory helpers ---
@@ -384,7 +414,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-direct-mcp', version: '1.0.0' });
+  const server = new McpServer({ name: 'yandex-direct-mcp', version: '2.2.0' });
 
   // ===========================
   // Campaigns (8 tools)

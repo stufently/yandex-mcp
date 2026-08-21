@@ -1,6 +1,6 @@
 {
   "name": "@stufently/yandex-wordstat-mcp",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "MCP server for Yandex Wordstat API — keyword research for Russian/CIS markets",
   "keywords": [
     "mcp",

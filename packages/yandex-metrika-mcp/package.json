@@ -1,6 +1,6 @@
 {
   "name": "@stufently/yandex-metrika-mcp",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "description": "MCP server for Yandex Metrika API — web analytics, traffic, audience data",
   "keywords": [
     "mcp",

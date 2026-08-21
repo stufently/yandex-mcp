@@ -10,7 +10,7 @@
     },
     "packages/yandex-direct-mcp": {
       "name": "@stufently/yandex-direct-mcp",
-      "version": "1.0.0",
+      "version": "2.2.0",
       "bin": {
         "yandex-direct-mcp": "src/index.mjs",
       },
@@ -21,7 +21,7 @@
     },
     "packages/yandex-metrika-mcp": {
       "name": "@stufently/yandex-metrika-mcp",
-      "version": "1.0.0",
+      "version": "2.2.0",
       "bin": {
         "yandex-metrika-mcp": "src/index.mjs",
       },
@@ -32,7 +32,7 @@
     },
     "packages/yandex-search-mcp": {
       "name": "@stufently/yandex-search-mcp",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "bin": {
         "yandex-search-mcp": "src/index.mjs",
       },
@@ -43,7 +43,7 @@
     },
     "packages/yandex-webmaster-mcp": {
       "name": "@stufently/yandex-webmaster-mcp",
-      "version": "1.1.0",
+      "version": "2.2.0",
       "bin": {
         "yandex-webmaster-mcp": "src/index.mjs",
       },
@@ -54,7 +54,7 @@
     },
     "packages/yandex-wordstat-mcp": {
       "name": "@stufently/yandex-wordstat-mcp",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "bin": {
         "yandex-wordstat-mcp": "src/index.mjs",
       },

@@ -79,7 +79,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-search', version: '2.0.0' });
+  const server = new McpServer({ name: 'yandex-search', version: '2.2.0' });
 
   server.tool(
     'search',
