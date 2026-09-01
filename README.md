@@ -10,11 +10,11 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 |---------|-------------|-------|
 | [yandex-search-mcp](packages/yandex-search-mcp) | Yandex Search API v2 (Cloud) | 1 |
 | [yandex-wordstat-mcp](packages/yandex-wordstat-mcp) | Yandex Wordstat (Cloud Search API v2) -- keyword research | 5 |
-| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 30 |
+| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 31 |
 | [yandex-metrika-mcp](packages/yandex-metrika-mcp) | Yandex Metrika API -- web analytics | 12 |
 | [yandex-direct-mcp](packages/yandex-direct-mcp) | Yandex Direct API v5 -- ad campaigns | 43 |
 
-**91 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
+**92 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
 
 > **Package names.** These packages will be published under the **`@stufently/*` scope**
 > (`@stufently/yandex-webmaster-mcp` and so on). The *unscoped* names — `yandex-search-mcp`,
@@ -276,9 +276,11 @@ onto real tools listed in the per-package READMEs.
 - "Give me the Yandex region tree down to depth 2 so I can pick region IDs for filtering."
 - "Compare desktop vs phone demand for «доставка еды»."
 
-### yandex-webmaster (30 tools)
+### yandex-webmaster (31 tools)
 
 - "List my verified sites in Yandex Webmaster with their SQI."
+- "Add https://example.com/sitemap.xml to Webmaster for example.com."
+- "Why did pages drop out of search on example.com? Group the samples by exclusion reason."
 - "What are my top 50 queries by clicks for example.com, and how did positions move?"
 - "Show indexing history for example.com and flag any sudden drop in pages in search."
 - "What site problems does Yandex report for example.com right now?"
@@ -358,7 +360,9 @@ bun run smoke
 packages/
   yandex-search-mcp/       # 1 tool   - Yandex Search  (src/parse.mjs — XML parsing)
   yandex-wordstat-mcp/     # 5 tools  - Keyword research (src/dates.mjs — API window rules)
-  yandex-webmaster-mcp/    # 30 tools - Site analytics  (src/series.mjs — time series shapes)
+  yandex-webmaster-mcp/    # 31 tools - Site analytics  (SKILL.md — agent playbook;
+                           #                            src/series.mjs — time series shapes;
+                           #                            src/exclusions.mjs — exclusion reasons)
   yandex-metrika-mcp/      # 12 tools - Web analytics
   yandex-direct-mcp/       # 43 tools - Ad campaigns
 scripts/smoke-tools.mjs    # Starts every server and checks tools/list

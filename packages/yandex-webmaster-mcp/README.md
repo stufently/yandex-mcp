@@ -52,7 +52,14 @@ This opens a browser for Yandex OAuth authorization and returns a token. Set the
 
 Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 
-## Tool Reference (30 tools)
+## Agent playbook
+
+`SKILL.md` next to this file is the task-level guide for agents: the new-site flow, the
+regular-audit order, the recrawl rules, how the three different time-series shapes are read,
+and — importantly — what API v4 does **not** have (IndexNow, robots.txt, site region, favicon,
+mobile status, Metrika binding), so nothing gets invented.
+
+## Tool Reference (31 tools)
 
 ### Core (3)
 
@@ -96,7 +103,13 @@ Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-search-events-history` | Get search URL events history | `host_id`, `date_from?`, `date_to?` |
-| `get-search-events-samples` | Get sample URLs for search events | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
+| `get-search-events-samples` | Get sample URLs for search events, **with per-URL exclusion reasons** (`excluded_url_status`) plus an `exclusion_reasons` breakdown of the fetched page | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
+
+There is no dedicated "excluded pages" resource in API v4: `get-summary` carries only the
+aggregate `excluded_pages_count`, and the reason a given URL was dropped lives on
+`REMOVED_FROM_SEARCH` records here. Since the API has no server-side event filter, `count`
+still counts events of **both** types and `limit`/`offset` page the mixed stream — a complete
+per-reason tally means walking the pages yourself.
 
 ### Links (4)
 
@@ -107,13 +120,20 @@ Note: The Webmaster API uses `Authorization: OAuth {token}` (not Bearer).
 | `get-broken-internal-links` | Get broken internal links | `host_id`, `limit?` (1-100), `offset?` |
 | `get-broken-internal-links-history` | Get broken internal links count history | `host_id`, `date_from?`, `date_to?` |
 
-### Sitemaps (3)
+### Sitemaps (4)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-sitemaps` | List all sitemaps for a host | `host_id`, `limit?` (1-100) |
 | `get-sitemap` | Get details for a specific sitemap | `host_id`, `sitemap_id` |
 | `get-user-sitemaps` | List user-added sitemaps | `host_id`, `limit?` (1-100) |
+| `add-sitemap` | **Write.** Add a user sitemap file; returns `sitemap_id`. Additive — the file is removable in the Webmaster panel | `host_id`, `url` |
+
+`add-sitemap` needs the host verified (`404 HOST_NOT_VERIFIED` otherwise). Adding a file that is
+already there answers `409 SITEMAP_ALREADY_ADDED`; like every other non-2xx here it surfaces as
+an error, and its payload names the existing `sitemap_id` — read it as "already present" rather
+than retrying. Removing a sitemap (`DELETE /user-added-sitemaps/{id}`) exists in the API but is
+deliberately not wrapped here.
 
 ### Important URLs (2)
 
@@ -172,9 +192,10 @@ counts — `"true"`, `1` and `"yes"` are refused, because a guess at the protoco
 decision to delete anything. The tool is also marked `destructiveHint: true` in its MCP
 annotations, so clients that surface tool risk can show it before the call.
 
-The other two writes are deliberately left unguarded: `add-host` is additive and undone by
-`delete-host`, and `add-recrawl-url` only queues a URL for re-crawl against a daily quota that
-replenishes. A confirmation on every write would train callers to pass `confirm: true` by
+The other three writes are deliberately left unguarded: `add-host` is additive and undone by
+`delete-host`, `add-recrawl-url` only queues a URL for re-crawl against a daily quota that
+replenishes, and `add-sitemap` adds a file that stays removable and takes no history with it.
+A confirmation on every write would train callers to pass `confirm: true` by
 reflex, which is exactly what would defeat it on the one call that matters.
 
 ## Common Parameters

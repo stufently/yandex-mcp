@@ -36,14 +36,22 @@ test('разрушительная поверхность пакета не ра
   });
 });
 
-test('add-host и add-recrawl-url подтверждения НЕ требуют', async () => {
+test('add-host, add-recrawl-url и add-sitemap подтверждения НЕ требуют', async () => {
   const tools = await listTools('yandex-webmaster-mcp');
-  // Аддитивные: add-host обратим тем самым delete-host, а add-recrawl-url только
-  // ставит URL в очередь переобхода и тратит суточную квоту, которая восстанавливается.
-  for (const name of ['add-host', 'add-recrawl-url']) {
+  // Аддитивные: add-host обратим тем самым delete-host, add-recrawl-url только
+  // ставит URL в очередь переобхода и тратит суточную квоту, которая восстанавливается,
+  // а add-sitemap добавляет файл Sitemap — он удаляется в Вебмастере и историю не уносит.
+  for (const name of ['add-host', 'add-recrawl-url', 'add-sitemap']) {
     const tool = tools.find((t) => t.name === name);
     assert.ok(tool, `${name} должен быть зарегистрирован`);
-    assert.notEqual(tool.annotations?.destructiveHint, true, `${name} — аддитивная операция, не разрушительная`);
+    // Именно `false`, а не «отсутствует»: в MCP умолчание у destructiveHint — true,
+    // поэтому тул без аннотации клиент вправе показать как разрушительный.
+    assert.equal(
+      tool.annotations?.destructiveHint,
+      false,
+      `${name} — аддитивная операция, это должно быть сказано аннотацией явно`,
+    );
+    assert.equal(tool.annotations?.readOnlyHint, false, `${name} всё-таки пишет`);
     assert.ok(!tool.inputSchema?.properties?.confirm, `${name} не должен требовать подтверждения`);
   }
 });

@@ -5,6 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { CONFIRM_PARAM_DESCRIPTION, createDeleteHostHandler } from './confirm.mjs';
 import { dateParams } from './dates.mjs';
+import { countExclusionReasons, formatExclusionReasons } from './exclusions.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 
 const command = process.argv[2];
@@ -158,6 +159,35 @@ async function runServer() {
   // --- MCP Server ---
 
   const server = new McpServer({ name: 'yandex-webmaster', version: '2.2.0' });
+
+  /**
+   * Регистрация ПИШУЩЕГО, но аддитивного тула.
+   *
+   * Аннотации проставляются явно, потому что в MCP умолчание у `destructiveHint` —
+   * `true`: тул без аннотаций клиент вправе показать как разрушительный. Пока эти
+   * три писателя заводились через `server.tool(...)`, добавление сайта, сайтмапа и
+   * URL в очередь переобхода выглядели для клиента ровно так же опасно, как
+   * `delete-host`, — и предупреждение обесценивалось на единственной операции, где
+   * оно что-то значит.
+   */
+  function registerAdditiveWriteTool(name, { title, description, inputSchema }, handler) {
+    server.registerTool(
+      name,
+      {
+        title,
+        description,
+        inputSchema,
+        annotations: {
+          title,
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true,
+        },
+      },
+      handler,
+    );
+  }
 
   // === Core (3 tools) ===
 
@@ -453,7 +483,9 @@ async function runServer() {
   // 14. get-search-events-samples
   server.tool(
     'get-search-events-samples',
-    'Get sample URLs for search events (appeared in / removed from search). ' +
+    'Get sample URLs for search events (appeared in / removed from search), with the reason each ' +
+      'page was dropped (excluded_url_status). This is the only place API v4 exposes per-URL ' +
+      'exclusion reasons — get-summary only has the aggregate excluded_pages_count. ' +
       'Note: the API has no server-side event filter, so event_type is applied to the fetched page ' +
       'and offset/limit still paginate the unfiltered stream.',
     {
@@ -481,11 +513,21 @@ async function runServer() {
       const filtered = event_type
         ? ` (of ${all.length} on this page; ${data.count ?? 'n/a'} events of both types in total)`
         : `, ${data.count ?? 'n/a'} in total`;
+      // Причина исключения (`excluded_url_status`) есть ТОЛЬКО здесь: отдельной ручки
+      // «исключённые страницы» в API v4 нет. Без этой сводки она молча оставалась в
+      // structuredContent и в текст ответа не попадала.
+      const exclusionReasons = countExclusionReasons(samples);
       return {
-        content: [{ type: 'text', text: `${label}: ${samples.length} sample URLs${filtered}.` }],
+        content: [
+          {
+            type: 'text',
+            text: `${label}: ${samples.length} sample URLs${filtered}.${formatExclusionReasons(exclusionReasons)}`,
+          },
+        ],
         structuredContent: {
           ...omitKey(data, 'count'),
           samples,
+          exclusion_reasons: exclusionReasons,
           unfiltered_total_count: data.count,
           unfiltered_page_count: all.length,
         },
@@ -576,7 +618,7 @@ async function runServer() {
     },
   );
 
-  // === Sitemaps (3 tools) ===
+  // === Sitemaps (4 tools) ===
 
   // 19. get-sitemaps
   server.tool(
@@ -636,6 +678,36 @@ async function runServer() {
       const sitemaps = data.sitemaps || [];
       return {
         content: [{ type: 'text', text: `${sitemaps.length} user-added sitemaps.` }],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // add-sitemap
+  //
+  // POST /user/{user-id}/hosts/{host-id}/user-added-sitemaps, тело {"url": …} →
+  // {"sitemap_id": …}, 201 CREATED (справочник: «Добавление файла Sitemap»).
+  // Аддитивная операция: отменяется удалением файла в Вебмастере, подтверждения
+  // не требует — иначе `confirm: true` станет рефлексом и перестанет защищать
+  // delete-host, единственную необратимую операцию пакета.
+  registerAdditiveWriteTool(
+    'add-sitemap',
+    {
+      title: 'Add Sitemap file',
+      description:
+        'Add a Sitemap file to Yandex Webmaster (user-added sitemaps). Returns sitemap_id. ' +
+        'The host must be verified, or the call fails with 404 HOST_NOT_VERIFIED. Adding a file ' +
+        'that is already there fails with 409 SITEMAP_ALREADY_ADDED — not a broken call but ' +
+        '"already present", and the error payload names the existing sitemap_id.',
+      inputSchema: {
+        host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
+        url: z.string().describe('Full URL of the sitemap file (e.g. "https://example.com/sitemap.xml")'),
+      },
+    },
+    async ({ host_id, url }) => {
+      const data = await apiRequestPost(await hostUrl(host_id, '/user-added-sitemaps'), { url });
+      return {
+        content: [{ type: 'text', text: `Sitemap added: ${url}\nSitemap ID: ${data.sitemap_id}` }],
         structuredContent: data,
       };
     },
@@ -709,12 +781,15 @@ async function runServer() {
   );
 
   // 25. add-recrawl-url
-  server.tool(
+  registerAdditiveWriteTool(
     'add-recrawl-url',
-    'Enqueue a URL for Yandex re-crawl. Daily quota applies (check get-recrawl-quota). Returns task_id.',
     {
-      host_id: z.string().describe('Host ID (e.g. "https:example.com:443")'),
-      url: z.string().describe('Full URL on the host to re-crawl (must start with host scheme+domain)'),
+      title: 'Queue URL for re-crawl',
+      description: 'Enqueue a URL for Yandex re-crawl. Daily quota applies (check get-recrawl-quota). Returns task_id.',
+      inputSchema: {
+        host_id: z.string().describe('Host ID (e.g. "https:example.com:443")'),
+        url: z.string().describe('Full URL on the host to re-crawl (must start with host scheme+domain)'),
+      },
     },
     async ({ host_id, url }) => {
       const data = await apiRequestPost(await hostUrl(host_id, '/recrawl/queue'), { url });
@@ -776,11 +851,15 @@ async function runServer() {
   // === Host Management (2 tools) ===
 
   // add-host
-  server.tool(
+  registerAdditiveWriteTool(
     'add-host',
-    'Add a new site (host) to Yandex Webmaster. The host_url must include protocol (e.g. "https://example.com"). After adding, the host needs verification.',
     {
-      host_url: z.string().describe('Site URL with protocol (e.g. "https://example.com")'),
+      title: 'Add site to Webmaster',
+      description:
+        'Add a new site (host) to Yandex Webmaster. The host_url must include protocol (e.g. "https://example.com"). After adding, the host needs verification.',
+      inputSchema: {
+        host_url: z.string().describe('Site URL with protocol (e.g. "https://example.com")'),
+      },
     },
     async ({ host_url }) => {
       const userId = await getUserId();
