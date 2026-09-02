@@ -9,10 +9,14 @@ import {
   collectExcludedPages,
   countExclusionReasons,
   EVENTS_SAMPLES_PAGE_SIZE,
+  formatExcludedCountNote,
   formatExcludedPages,
   formatExclusionReasons,
+  formatReturnedToSearch,
   selectExcludedPages,
 } from './exclusions.mjs';
+import { formatHostList, formatRecrawlQuota, formatSitemap, formatSummary, orNA } from './format.mjs';
+import { annotateBrokenLinks, formatBrokenLinks } from './links.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 
 const command = process.argv[2];
@@ -209,18 +213,20 @@ async function runServer() {
   });
 
   // 2. list-hosts
-  server.tool('list-hosts', 'List all verified hosts (sites) in Webmaster.', {}, async () => {
-    const userId = await getUserId();
-    const data = await apiRequest(`/user/${userId}/hosts`);
-    const hosts = data.hosts || [];
-    const summary = hosts
-      .map((h) => `${h.unicode_host_url || h.host_id} [${h.verified ? 'verified' : 'unverified'}]`)
-      .join('\n');
-    return {
-      content: [{ type: 'text', text: `${hosts.length} hosts:\n${summary}` }],
-      structuredContent: data,
-    };
-  });
+  server.tool(
+    'list-hosts',
+    'List all hosts (sites) in Webmaster with their host_id — the identifier every other tool ' +
+      'requires (format "https:example.com:443"). Take it from here instead of assembling it by hand.',
+    {},
+    async () => {
+      const userId = await getUserId();
+      const data = await apiRequest(`/user/${userId}/hosts`);
+      return {
+        content: [{ type: 'text', text: formatHostList(data.hosts) }],
+        structuredContent: data,
+      };
+    },
+  );
 
   // 3. get-host
   server.tool(
@@ -254,14 +260,8 @@ async function runServer() {
     },
     async ({ host_id }) => {
       const data = await apiRequest(await hostUrl(host_id, '/summary'));
-      const sp = data.site_problems || {};
       return {
-        content: [
-          {
-            type: 'text',
-            text: `SQI: ${data.sqi || 'N/A'} | Searchable: ${data.searchable_pages_count || 0} | Excluded: ${data.excluded_pages_count || 0}\nProblems: FATAL=${sp.FATAL || 0}, CRITICAL=${sp.CRITICAL || 0}, POSSIBLE=${sp.POSSIBLE_PROBLEM || 0}, RECOMMENDATION=${sp.RECOMMENDATION || 0}`,
-          },
-        ],
+        content: [{ type: 'text', text: formatSummary(data) }],
         structuredContent: data,
       };
     },
@@ -341,7 +341,7 @@ async function runServer() {
         .slice(0, 20)
         .map(
           (q, i) =>
-            `${i + 1}. "${q.query_text}" — shows: ${q.indicators?.TOTAL_SHOWS || 0}, clicks: ${q.indicators?.TOTAL_CLICKS || 0}`,
+            `${i + 1}. "${q.query_text}" — shows: ${orNA(q.indicators?.TOTAL_SHOWS)}, clicks: ${orNA(q.indicators?.TOTAL_CLICKS)}`,
         )
         .join('\n');
       // Без явных дат API сам выбирает окно (обычно последние 7 дней) и сообщает его
@@ -557,13 +557,23 @@ async function runServer() {
   // Поэтому «дай 20 исключённых» — это обход страниц с накоплением, а не один вызов.
   server.tool(
     'get-excluded-pages',
-    'List pages EXCLUDED from Yandex search with the reason for each one (url + excluded_url_status, ' +
-      'plus bad_http_status for HTTP_ERROR and target_url for redirect/canonical/duplicate cases). ' +
-      'API v4 has no "excluded pages" resource and no server-side event filter, so this walks ' +
-      '/search-urls/events/samples page by page until it has collected `limit` excluded pages ' +
-      '(at most `max_requests` page fetches — retries are not counted, so HTTP calls can be more) ' +
-      'and reports next_offset/exhausted so the walk can continue. ' +
-      'get-summary only carries the aggregate excluded_pages_count — a number with no reasons.',
+    'Pages DROPPED FROM SEARCH inside a time window, with the reason for each one (url + ' +
+      'excluded_url_status, plus bad_http_status for HTTP_ERROR and target_url for ' +
+      'redirect/canonical/duplicate cases). ' +
+      'READ THE NATURE OF THIS DATA: API v4 has no "currently excluded pages" resource, only the ' +
+      'event log /search-urls/events/samples, so this is built from REMOVED_FROM_SEARCH EVENTS in ' +
+      'the scanned window, not from a live index snapshot. Events are deduplicated per URL with the ' +
+      'latest one winning, so a page that dropped and came back is NOT reported as excluded — it is ' +
+      'listed separately under `returned_to_search`. ' +
+      'The window is bounded by `limit`/`max_requests`, so an older exclusion outside it is invisible, ' +
+      'and `summary_excluded_pages_count` (the aggregate from get-summary, returned alongside) is a ' +
+      'DIFFERENT kind of number that is not expected to match the length of this list. ' +
+      'Deduplication spans ONE call: when continuing a walk with `offset`, pass the URLs from the ' +
+      'previous `returned_to_search` in `returned_urls`, otherwise a page whose return fell in the ' +
+      'earlier window will be reported as excluded again. ' +
+      'There is no server-side event filter, so the tool walks the mixed stream page by page until it ' +
+      'has collected `limit` excluded pages (at most `max_requests` page fetches — retries are not ' +
+      'counted, so HTTP calls can be more) and reports next_offset/exhausted to continue the walk.',
     {
       host_id: z.string().describe('Host ID'),
       limit: z.number().int().min(1).max(100).optional().describe('How many EXCLUDED pages to collect (default: 20)'),
@@ -578,8 +588,17 @@ async function runServer() {
           'Cap on PAGE fetches made while walking the mixed event stream (default: 10). ' +
             'Retries of a failed fetch (429/5xx) are not counted, so the number of HTTP calls can be higher.',
         ),
+      returned_urls: z
+        .array(z.string())
+        .max(1000)
+        .optional()
+        .describe(
+          'URLs already known to have come back to search — pass `returned_to_search` from the ' +
+            'previous call when continuing a walk with `offset`. Deduplication only spans one call, ' +
+            'so without this a page whose return fell in the earlier window is reported as excluded again.',
+        ),
     },
-    async ({ host_id, limit = 20, offset = 0, max_requests = 10 }) => {
+    async ({ host_id, limit = 20, offset = 0, max_requests = 10, returned_urls }) => {
       const endpoint = await hostUrl(host_id, '/search-urls/events/samples');
       const result = await collectExcludedPages({
         fetchPage: (pageOffset, pageSize) => apiRequest(endpoint, paginationParams(pageSize, pageOffset)),
@@ -587,22 +606,40 @@ async function runServer() {
         offset,
         maxRequests: max_requests,
         pageSize: EVENTS_SAMPLES_PAGE_SIZE,
+        knownReturned: returned_urls,
       });
       // «Дошли до конца потока» и «упёрлись в потолок запросов» — разные вещи: во втором
       // случае исключённые страницы ещё есть, просто мы за ними не пошли.
+      // Подсказка о продолжении обязана называть ОБА аргумента: дедуп живёт внутри вызова, и
+      // обход, продолженный одним offset, снова объявит исключённой страницу, чей возврат
+      // остался в прошлом окне.
       const tail = result.exhausted
         ? ' Event stream exhausted.'
-        : ` More may remain: resume with offset=${result.next_offset}.`;
+        : ` More may remain: resume with offset=${result.next_offset}` +
+          `${result.returned_to_search.length > 0 ? ' and returned_urls from the list below' : ''}.`;
+      // Агрегат Яндекса кладём РЯДОМ с длиной списка: два тула про «исключённые страницы»
+      // расходились в разы (боевой замер по hqdthai.ru: summary 5 против 125+ у обхода), и
+      // ни один об этом не предупреждал. Сводка здесь — справка, поэтому её отказ не должен
+      // ронять сам тул: без неё остаётся честное «числа разной природы».
+      let summaryExcludedCount = null;
+      try {
+        const summary = await apiRequest(await hostUrl(host_id, '/summary'));
+        if (Number.isFinite(summary?.excluded_pages_count)) summaryExcludedCount = summary.excluded_pages_count;
+      } catch {
+        summaryExcludedCount = null;
+      }
       return {
         content: [
           {
             type: 'text',
             text:
               `Excluded pages: ${result.pages.length} (scanned ${result.scanned_events} events of both types ` +
-              `in ${result.page_requests} page fetches).${tail}${formatExcludedPages(result.pages)}`,
+              `in ${result.page_requests} page fetches).${tail}` +
+              `${formatExcludedCountNote(result.pages.length, summaryExcludedCount)}` +
+              `${formatExcludedPages(result.pages)}${formatReturnedToSearch(result.returned_to_search)}`,
           },
         ],
-        structuredContent: result,
+        structuredContent: { ...result, summary_excluded_pages_count: summaryExcludedCount },
       };
     },
   );
@@ -650,7 +687,11 @@ async function runServer() {
   // 17. get-broken-internal-links
   server.tool(
     'get-broken-internal-links',
-    'Get broken internal links.',
+    'List broken internal links (destination URL, the source page linking to it, and when Yandex ' +
+      'last checked the link). Records can be months old: `source_last_access_date` equal to ' +
+      '`discovery_date` means the link has NOT been re-verified since the problem was found, so it ' +
+      'may already be fixed. Such records are flagged `stale` / "never re-checked" — verify before ' +
+      'treating the count as a live failure.',
     {
       host_id: z.string().describe('Host ID'),
       limit: z.number().int().min(1).max(100).optional(),
@@ -661,12 +702,10 @@ async function runServer() {
         await hostUrl(host_id, '/links/internal/broken/samples'),
         paginationParams(limit, offset),
       );
-      const links = data.links || [];
+      const links = annotateBrokenLinks(data.links);
       return {
-        content: [
-          { type: 'text', text: `Broken internal links: ${links.length} samples (${data.count ?? 'n/a'} total).` },
-        ],
-        structuredContent: data,
+        content: [{ type: 'text', text: formatBrokenLinks(links, { total: data.count }) }],
+        structuredContent: { ...data, links },
       };
     },
   );
@@ -727,7 +766,7 @@ async function runServer() {
         content: [
           {
             type: 'text',
-            text: `Sitemap: ${sitemap_id}\nURLs: ${data.urls_count || 'N/A'}\nLast checked: ${data.last_check_date || 'N/A'}`,
+            text: formatSitemap(sitemap_id, data),
           },
         ],
         structuredContent: data,
@@ -844,7 +883,7 @@ async function runServer() {
         content: [
           {
             type: 'text',
-            text: `Recrawl quota: ${data.daily_quota || 'N/A'} daily, ${data.quota_remainder || 'N/A'} remaining.`,
+            text: formatRecrawlQuota(data),
           },
         ],
         structuredContent: data,

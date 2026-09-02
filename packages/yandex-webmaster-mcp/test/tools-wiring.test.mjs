@@ -71,3 +71,45 @@ test('add-sitemap принимает url файла, а не только host_i
   assert.ok(tool.inputSchema?.required?.includes('host_id'));
   assert.ok(tool.inputSchema?.required?.includes('url'), 'без URL файла добавлять нечего');
 });
+
+test('описание get-excluded-pages не выдаёт ленту событий за текущее состояние', async () => {
+  // Тул описывался как «список страниц, исключённых из поиска», а собирался из событий
+  // REMOVED_FROM_SEARCH за окно. Боевой замер по hqdthai.ru: 81 URL из выдачи был и в
+  // removed, и в appeared — до 29% списка страницы, которые СЕЙЧАС в поиске.
+  const tools = await listTools('yandex-webmaster-mcp');
+  const tool = tools.find((t) => t.name === 'get-excluded-pages');
+  assert.match(tool.description, /events/i, 'описание обязано называть природу данных — события, а не снимок');
+  assert.match(tool.description, /returned_to_search/, 'и называть поле, куда уходят вернувшиеся страницы');
+  assert.match(
+    tool.description,
+    /not expected to match/i,
+    'и предупреждать, что агрегат get-summary — число другой природы',
+  );
+});
+
+test('list-hosts обещает host_id — идентификатор для всех остальных тулов', async () => {
+  // Без него формат "https:example.com:443" приходилось угадывать, хотя он есть в ответе.
+  const tools = await listTools('yandex-webmaster-mcp');
+  const tool = tools.find((t) => t.name === 'list-hosts');
+  assert.match(tool.description, /host_id/);
+});
+
+test('get-broken-internal-links предупреждает о возрасте записей', async () => {
+  // «189 битых ссылок» читается как авария, хотя живая проверка 258 таких ссылок дала
+  // 10 настоящих 404 и ~80% редиректов: Яндекс просто не перечитывал источники с марта.
+  const tools = await listTools('yandex-webmaster-mcp');
+  const tool = tools.find((t) => t.name === 'get-broken-internal-links');
+  assert.match(tool.description, /source_last_access_date/);
+  assert.match(tool.description, /stale/i);
+});
+
+test('оба тула с исключёнными страницами называют поле причины одинаково', async () => {
+  // Описание get-excluded-pages обещало `excluded_url_status`, а structuredContent отдавал
+  // `reason`; соседний get-search-events-samples в сырых samples отдавал третий вариант
+  // того же значения. Проверка выдачи — в tool-output.test.mjs, здесь витрина.
+  const tools = await listTools('yandex-webmaster-mcp');
+  for (const name of ['get-excluded-pages', 'get-search-events-samples']) {
+    const tool = tools.find((t) => t.name === name);
+    assert.match(tool.description, /excluded_url_status/, `${name}: поле причины называется именем из API`);
+  }
+});

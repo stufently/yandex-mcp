@@ -66,7 +66,7 @@ mobile status, Metrika binding), so nothing gets invented.
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-user` | Get current Webmaster user info and user_id | -- |
-| `list-hosts` | List all verified hosts (sites) | -- |
+| `list-hosts` | List all hosts (sites) **with their `host_id`** — the identifier every other tool needs | -- |
 | `get-host` | Get details for a specific host | `host_id` |
 
 ### Statistics (2)
@@ -104,7 +104,7 @@ mobile status, Metrika binding), so nothing gets invented.
 |------|-------------|------------|
 | `get-search-events-history` | Get search URL events history | `host_id`, `date_from?`, `date_to?` |
 | `get-search-events-samples` | Get sample URLs for search events, **with per-URL exclusion reasons** (`excluded_url_status`): an `exclusion_reasons` tally of the fetched page plus an `excluded_pages` list of URL → reason | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
-| `get-excluded-pages` | **List the pages excluded from search with the reason for each one.** Walks the mixed event stream page by page until `limit` excluded pages are collected, then reports `next_offset` (first unread event) / `exhausted` so the walk can continue | `host_id`, `limit?` (1-100 excluded pages, default: 20), `offset?`, `max_requests?` (1-50 page fetches, retries not counted, default: 10) |
+| `get-excluded-pages` | **Pages dropped from search inside a time window, with `excluded_url_status` for each one.** Built from `REMOVED_FROM_SEARCH` events, deduplicated per URL (latest event wins), so a page that came back is reported under `returned_to_search` instead. Walks the mixed event stream page by page until `limit` excluded pages are collected, then reports `next_offset` (first unread event) / `exhausted` so the walk can continue. Also returns `summary_excluded_pages_count` for cross-checking | `host_id`, `limit?` (1-100 excluded pages, default: 20), `offset?`, `max_requests?` (1-50 page fetches, retries not counted, default: 10), `returned_urls?` (pass the previous `returned_to_search` when continuing a walk) |
 
 There is no dedicated "excluded pages" resource in API v4: `get-summary` carries only the
 aggregate `excluded_pages_count`, and the reason a given URL was dropped lives on
@@ -112,8 +112,28 @@ aggregate `excluded_pages_count`, and the reason a given URL was dropped lives o
 server-side event filter, `count` still counts events of **both** types and `limit`/`offset`
 page the mixed stream. `get-search-events-samples` reports what one such page contains;
 `get-excluded-pages` does the walking, so its `limit` counts excluded pages rather than
-events. Per-URL detail beyond the reason code: `bad_http_status` for `HTTP_ERROR`, and
+events. Per-URL detail beyond the status code: `bad_http_status` for `HTTP_ERROR`, and
 `target_url` for the redirect target, canonical address or duplicate.
+
+**These are events in time, not a snapshot of the index.** The same URL appears as
+`REMOVED_FROM_SEARCH` and later as `APPEARED_IN_SEARCH` — it dropped out and came back, and
+right now it is in search. `get-excluded-pages` therefore deduplicates by URL and keeps the
+latest event: a URL whose latest event is an appearance goes to `returned_to_search`, not to
+`pages`. Two consequences worth stating out loud:
+
+- an exclusion older than the scanned window is invisible, no matter how current it is;
+- deduplication spans **one call**. Continuing from `next_offset` starts with an empty state,
+  so a page whose return fell into the previous window would be reported as excluded again —
+  pass the previous `returned_to_search` in `returned_urls` to keep the walk honest;
+- `excluded_pages_count` from `get-summary` and the length of `pages` are **different kinds
+  of number** and are not expected to match. The tool returns the aggregate as
+  `summary_excluded_pages_count` and says so in its text, instead of leaving the reader to
+  discover a 25x gap on their own.
+
+The per-URL status field is named `excluded_url_status` everywhere — in the tool
+descriptions, in `excluded_pages` from `get-search-events-samples` and in `pages` from
+`get-excluded-pages`. It is the name from the Yandex reference (`ApiExcludedUrlStatus`), so
+it can be grepped against the docs.
 
 ### Links (4)
 
@@ -121,8 +141,23 @@ events. Per-URL detail beyond the reason code: `bad_http_status` for `HTTP_ERROR
 |------|-------------|------------|
 | `get-external-links` | Get external links pointing to the site | `host_id`, `limit?` (1-100), `offset?` |
 | `get-external-links-history` | Get external links count history | `host_id`, `date_from?`, `date_to?` |
-| `get-broken-internal-links` | Get broken internal links | `host_id`, `limit?` (1-100), `offset?` |
+| `get-broken-internal-links` | List broken internal links: destination URL, the source page linking to it, and when Yandex last checked the link. Records carry `days_since_last_check`, `never_rechecked` and `stale` (last check older than 90 days) | `host_id`, `limit?` (1-100), `offset?` |
 | `get-broken-internal-links-history` | Get broken internal links count history | `host_id`, `date_from?`, `date_to?` |
+
+A broken-link record is a snapshot of the last time Yandex checked that link, and that
+moment can be months old: when `source_last_access_date` equals `discovery_date`, nothing has
+been re-verified since the problem was found, so the link may have been fixed long ago. Each
+record therefore carries `days_since_last_check`, `never_rechecked` and `stale` (last check
+older than 90 days — `never_rechecked` on its own does not set it), and the text block puts
+the warning above the list. A live check of 258 links reported broken across these sites
+(2026-09-02) found 10 real 404s; about 80% were 301 redirects. The API is not lying — the old
+one-line output just made the count read like an outage.
+
+⚠️ In the Yandex reference the name and the description of `source_last_access_date`
+disagree: the name says *source*, the description says "the date the robot last visited the
+link's **destination** page". The wording here stays neutral ("last checked") because the
+conclusion about the record's age holds under either reading, while a conclusion about a
+specific page does not.
 
 ### Sitemaps (4)
 

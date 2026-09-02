@@ -280,13 +280,13 @@ onto real tools listed in the per-package READMEs.
 
 - "List my verified sites in Yandex Webmaster with their SQI."
 - "Add https://example.com/sitemap.xml to Webmaster for example.com."
-- "List the pages excluded from search on example.com with the reason for each one."
+- "Which pages dropped out of search on example.com recently, and why? Show anything that came back too."
 - "Why did pages drop out of search on example.com? Group the samples by exclusion reason."
 - "What are my top 50 queries by clicks for example.com, and how did positions move?"
 - "Show indexing history for example.com and flag any sudden drop in pages in search."
 - "What site problems does Yandex report for example.com right now?"
 - "Send https://example.com/new-page for recrawl and tell me my remaining daily quota."
-- "Show broken internal links on example.com."
+- "Show broken internal links on example.com — and say which of them Yandex has not re-checked in months."
 
 ### yandex-metrika (12 tools)
 
