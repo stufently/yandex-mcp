@@ -5,7 +5,14 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { CONFIRM_PARAM_DESCRIPTION, createDeleteHostHandler } from './confirm.mjs';
 import { dateParams } from './dates.mjs';
-import { countExclusionReasons, formatExclusionReasons } from './exclusions.mjs';
+import {
+  collectExcludedPages,
+  countExclusionReasons,
+  EVENTS_SAMPLES_PAGE_SIZE,
+  formatExcludedPages,
+  formatExclusionReasons,
+  selectExcludedPages,
+} from './exclusions.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 
 const command = process.argv[2];
@@ -517,20 +524,80 @@ async function runServer() {
       // «исключённые страницы» в API v4 нет. Без этой сводки она молча оставалась в
       // structuredContent и в текст ответа не попадала.
       const exclusionReasons = countExclusionReasons(samples);
+      // Сводка отвечает «каких причин сколько», список — «какая страница по какой причине».
+      // Без второго агрегат остаётся числом, из которого нечего чинить.
+      const excludedPages = selectExcludedPages(samples);
       return {
         content: [
           {
             type: 'text',
-            text: `${label}: ${samples.length} sample URLs${filtered}.${formatExclusionReasons(exclusionReasons)}`,
+            text:
+              `${label}: ${samples.length} sample URLs${filtered}.` +
+              `${formatExclusionReasons(exclusionReasons)}${formatExcludedPages(excludedPages)}`,
           },
         ],
         structuredContent: {
           ...omitKey(data, 'count'),
           samples,
           exclusion_reasons: exclusionReasons,
+          excluded_pages: excludedPages,
           unfiltered_total_count: data.count,
           unfiltered_page_count: all.length,
         },
+      };
+    },
+  );
+
+  // get-excluded-pages
+  //
+  // Отдельного ресурса «исключённые страницы» в API v4 НЕТ (проверено по справочнику
+  // ресурсов 2026-09-02). Причина по конкретному URL живёт только в
+  // `/search-urls/events/samples`, и фильтра по типу события у него нет: `limit`/`offset`
+  // листают СМЕШАННЫЙ поток появившихся и исключённых, `count` считает события обоих типов.
+  // Поэтому «дай 20 исключённых» — это обход страниц с накоплением, а не один вызов.
+  server.tool(
+    'get-excluded-pages',
+    'List pages EXCLUDED from Yandex search with the reason for each one (url + excluded_url_status, ' +
+      'plus bad_http_status for HTTP_ERROR and target_url for redirect/canonical/duplicate cases). ' +
+      'API v4 has no "excluded pages" resource and no server-side event filter, so this walks ' +
+      '/search-urls/events/samples page by page until it has collected `limit` excluded pages ' +
+      '(at most `max_requests` HTTP calls) and reports next_offset/exhausted so the walk can continue. ' +
+      'get-summary only carries the aggregate excluded_pages_count — a number with no reasons.',
+    {
+      host_id: z.string().describe('Host ID'),
+      limit: z.number().min(1).max(100).optional().describe('How many EXCLUDED pages to collect (default: 20)'),
+      offset: z.number().min(0).optional().describe('Event-stream offset to resume from (default: 0)'),
+      max_requests: z
+        .number()
+        .min(1)
+        .max(50)
+        .optional()
+        .describe('Cap on API calls made while walking the mixed event stream (default: 10)'),
+    },
+    async ({ host_id, limit = 20, offset = 0, max_requests = 10 }) => {
+      const endpoint = await hostUrl(host_id, '/search-urls/events/samples');
+      const result = await collectExcludedPages({
+        fetchPage: (pageOffset, pageSize) => apiRequest(endpoint, paginationParams(pageSize, pageOffset)),
+        limit,
+        offset,
+        maxRequests: max_requests,
+        pageSize: EVENTS_SAMPLES_PAGE_SIZE,
+      });
+      // «Дошли до конца потока» и «упёрлись в потолок запросов» — разные вещи: во втором
+      // случае исключённые страницы ещё есть, просто мы за ними не пошли.
+      const tail = result.exhausted
+        ? ' Event stream exhausted.'
+        : ` More may remain: resume with offset=${result.next_offset}.`;
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              `Excluded pages: ${result.pages.length} (scanned ${result.scanned_events} events of both types ` +
+              `in ${result.requests} API calls).${tail}${formatExcludedPages(result.pages)}`,
+          },
+        ],
+        structuredContent: result,
       };
     },
   );

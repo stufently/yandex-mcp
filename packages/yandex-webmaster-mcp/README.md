@@ -59,7 +59,7 @@ regular-audit order, the recrawl rules, how the three different time-series shap
 and — importantly — what API v4 does **not** have (IndexNow, robots.txt, site region, favicon,
 mobile status, Metrika binding), so nothing gets invented.
 
-## Tool Reference (31 tools)
+## Tool Reference (32 tools)
 
 ### Core (3)
 
@@ -98,18 +98,22 @@ mobile status, Metrika binding), so nothing gets invented.
 | `get-insearch-history` | Get in-search (appearing in results) history | `host_id`, `date_from?`, `date_to?` |
 | `get-insearch-samples` | Get sample URLs appearing in search | `host_id`, `limit?` (1-100), `offset?` |
 
-### Search Events (2)
+### Search Events (3)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-search-events-history` | Get search URL events history | `host_id`, `date_from?`, `date_to?` |
-| `get-search-events-samples` | Get sample URLs for search events, **with per-URL exclusion reasons** (`excluded_url_status`) plus an `exclusion_reasons` breakdown of the fetched page | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
+| `get-search-events-samples` | Get sample URLs for search events, **with per-URL exclusion reasons** (`excluded_url_status`): an `exclusion_reasons` tally of the fetched page plus an `excluded_pages` list of URL → reason | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
+| `get-excluded-pages` | **List the pages excluded from search with the reason for each one.** Walks the mixed event stream page by page until `limit` excluded pages are collected, then reports `next_offset`/`exhausted` so the walk can continue | `host_id`, `limit?` (1-100 excluded pages, default: 20), `offset?`, `max_requests?` (1-50, default: 10) |
 
 There is no dedicated "excluded pages" resource in API v4: `get-summary` carries only the
 aggregate `excluded_pages_count`, and the reason a given URL was dropped lives on
-`REMOVED_FROM_SEARCH` records here. Since the API has no server-side event filter, `count`
-still counts events of **both** types and `limit`/`offset` page the mixed stream — a complete
-per-reason tally means walking the pages yourself.
+`REMOVED_FROM_SEARCH` records of `/search-urls/events/samples`. Since the API has no
+server-side event filter, `count` still counts events of **both** types and `limit`/`offset`
+page the mixed stream. `get-search-events-samples` reports what one such page contains;
+`get-excluded-pages` does the walking, so its `limit` counts excluded pages rather than
+events. Per-URL detail beyond the reason code: `bad_http_status` for `HTTP_ERROR`, and
+`target_url` for the redirect target, canonical address or duplicate.
 
 ### Links (4)
 

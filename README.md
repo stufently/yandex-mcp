@@ -276,10 +276,11 @@ onto real tools listed in the per-package READMEs.
 - "Give me the Yandex region tree down to depth 2 so I can pick region IDs for filtering."
 - "Compare desktop vs phone demand for «доставка еды»."
 
-### yandex-webmaster (31 tools)
+### yandex-webmaster (32 tools)
 
 - "List my verified sites in Yandex Webmaster with their SQI."
 - "Add https://example.com/sitemap.xml to Webmaster for example.com."
+- "List the pages excluded from search on example.com with the reason for each one."
 - "Why did pages drop out of search on example.com? Group the samples by exclusion reason."
 - "What are my top 50 queries by clicks for example.com, and how did positions move?"
 - "Show indexing history for example.com and flag any sudden drop in pages in search."
@@ -360,7 +361,7 @@ bun run smoke
 packages/
   yandex-search-mcp/       # 1 tool   - Yandex Search  (src/parse.mjs — XML parsing)
   yandex-wordstat-mcp/     # 5 tools  - Keyword research (src/dates.mjs — API window rules)
-  yandex-webmaster-mcp/    # 31 tools - Site analytics  (SKILL.md — agent playbook;
+  yandex-webmaster-mcp/    # 32 tools - Site analytics  (SKILL.md — agent playbook;
                            #                            src/series.mjs — time series shapes;
                            #                            src/exclusions.mjs — exclusion reasons)
   yandex-metrika-mcp/      # 12 tools - Web analytics
