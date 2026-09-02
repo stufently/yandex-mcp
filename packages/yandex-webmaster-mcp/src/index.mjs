@@ -323,8 +323,8 @@ async function runServer() {
         .describe('Device filter'),
       date_from: z.string().optional().describe('Start date YYYY-MM-DD'),
       date_to: z.string().optional().describe('End date YYYY-MM-DD'),
-      limit: z.number().min(1).max(500).optional().describe('Results limit (default: 100)'),
-      offset: z.number().min(0).optional().describe('Offset'),
+      limit: z.number().int().min(1).max(500).optional().describe('Results limit (default: 100)'),
+      offset: z.number().int().min(0).optional().describe('Offset'),
     },
     async ({ host_id, order_by, device_type, date_from, date_to, limit = 100, offset }) => {
       const params = {
@@ -412,8 +412,8 @@ async function runServer() {
     'Get sample indexed URLs.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
-      offset: z.number().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional(),
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(await hostUrl(host_id, '/indexing/samples'), paginationParams(limit, offset));
@@ -450,8 +450,8 @@ async function runServer() {
     'Get sample URLs appearing in search.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
-      offset: z.number().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional(),
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(
@@ -501,8 +501,8 @@ async function runServer() {
         .enum(['APPEARED_IN_SEARCH', 'REMOVED_FROM_SEARCH'])
         .optional()
         .describe('Keep only events of this type (client-side filter; omit to get both)'),
-      limit: z.number().min(1).max(100).optional().describe('Limit (default: 10)'),
-      offset: z.number().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional().describe('Limit (default: 10)'),
+      offset: z.number().int().min(0).optional(),
     },
     async ({ host_id, event_type, limit = 10, offset }) => {
       // event_type НЕ отправляем: API его молча игнорирует — любое значение, включая мусорное,
@@ -561,18 +561,23 @@ async function runServer() {
       'plus bad_http_status for HTTP_ERROR and target_url for redirect/canonical/duplicate cases). ' +
       'API v4 has no "excluded pages" resource and no server-side event filter, so this walks ' +
       '/search-urls/events/samples page by page until it has collected `limit` excluded pages ' +
-      '(at most `max_requests` HTTP calls) and reports next_offset/exhausted so the walk can continue. ' +
+      '(at most `max_requests` page fetches — retries are not counted, so HTTP calls can be more) ' +
+      'and reports next_offset/exhausted so the walk can continue. ' +
       'get-summary only carries the aggregate excluded_pages_count — a number with no reasons.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional().describe('How many EXCLUDED pages to collect (default: 20)'),
-      offset: z.number().min(0).optional().describe('Event-stream offset to resume from (default: 0)'),
+      limit: z.number().int().min(1).max(100).optional().describe('How many EXCLUDED pages to collect (default: 20)'),
+      offset: z.number().int().min(0).optional().describe('Event-stream offset to resume from (default: 0)'),
       max_requests: z
         .number()
+        .int()
         .min(1)
         .max(50)
         .optional()
-        .describe('Cap on API calls made while walking the mixed event stream (default: 10)'),
+        .describe(
+          'Cap on PAGE fetches made while walking the mixed event stream (default: 10). ' +
+            'Retries of a failed fetch (429/5xx) are not counted, so the number of HTTP calls can be higher.',
+        ),
     },
     async ({ host_id, limit = 20, offset = 0, max_requests = 10 }) => {
       const endpoint = await hostUrl(host_id, '/search-urls/events/samples');
@@ -594,7 +599,7 @@ async function runServer() {
             type: 'text',
             text:
               `Excluded pages: ${result.pages.length} (scanned ${result.scanned_events} events of both types ` +
-              `in ${result.requests} API calls).${tail}${formatExcludedPages(result.pages)}`,
+              `in ${result.page_requests} page fetches).${tail}${formatExcludedPages(result.pages)}`,
           },
         ],
         structuredContent: result,
@@ -610,8 +615,8 @@ async function runServer() {
     'Get external links pointing to the site.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
-      offset: z.number().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional(),
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(await hostUrl(host_id, '/links/external/samples'), paginationParams(limit, offset));
@@ -648,8 +653,8 @@ async function runServer() {
     'Get broken internal links.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
-      offset: z.number().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional(),
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(
@@ -693,7 +698,7 @@ async function runServer() {
     'List all sitemaps for a host.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
     },
     async ({ host_id, limit }) => {
       const params = {};
@@ -736,7 +741,7 @@ async function runServer() {
     'List user-added sitemaps.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
     },
     async ({ host_id, limit }) => {
       const params = {};
@@ -788,8 +793,8 @@ async function runServer() {
     'Get important URLs for a site.',
     {
       host_id: z.string().describe('Host ID'),
-      limit: z.number().min(1).max(100).optional(),
-      offset: z.number().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional(),
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(await hostUrl(host_id, '/important-urls'), paginationParams(limit, offset));
@@ -878,8 +883,8 @@ async function runServer() {
     'List recrawl queue for a host (URLs submitted via add-recrawl-url with their state).',
     {
       host_id: z.string().describe('Host ID (e.g. "https:example.com:443")'),
-      limit: z.number().optional().describe('Max results (default 10)'),
-      offset: z.number().optional().describe('Pagination offset'),
+      limit: z.number().int().optional().describe('Max results (default 10)'),
+      offset: z.number().int().optional().describe('Pagination offset'),
     },
     async ({ host_id, limit, offset }) => {
       const data = await apiRequest(await hostUrl(host_id, '/recrawl/queue'), paginationParams(limit, offset));

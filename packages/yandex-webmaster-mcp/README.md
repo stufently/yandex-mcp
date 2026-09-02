@@ -104,7 +104,7 @@ mobile status, Metrika binding), so nothing gets invented.
 |------|-------------|------------|
 | `get-search-events-history` | Get search URL events history | `host_id`, `date_from?`, `date_to?` |
 | `get-search-events-samples` | Get sample URLs for search events, **with per-URL exclusion reasons** (`excluded_url_status`): an `exclusion_reasons` tally of the fetched page plus an `excluded_pages` list of URL → reason | `host_id`, `event_type?` (APPEARED_IN_SEARCH/REMOVED_FROM_SEARCH — client-side filter, the API has none), `limit?` (1-100, default: 10), `offset?` |
-| `get-excluded-pages` | **List the pages excluded from search with the reason for each one.** Walks the mixed event stream page by page until `limit` excluded pages are collected, then reports `next_offset`/`exhausted` so the walk can continue | `host_id`, `limit?` (1-100 excluded pages, default: 20), `offset?`, `max_requests?` (1-50, default: 10) |
+| `get-excluded-pages` | **List the pages excluded from search with the reason for each one.** Walks the mixed event stream page by page until `limit` excluded pages are collected, then reports `next_offset` (first unread event) / `exhausted` so the walk can continue | `host_id`, `limit?` (1-100 excluded pages, default: 20), `offset?`, `max_requests?` (1-50 page fetches, retries not counted, default: 10) |
 
 There is no dedicated "excluded pages" resource in API v4: `get-summary` carries only the
 aggregate `excluded_pages_count`, and the reason a given URL was dropped lives on

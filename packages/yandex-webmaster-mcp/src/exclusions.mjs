@@ -91,7 +91,9 @@ export function selectExcludedPages(samples) {
     if (typeof sample.title === 'string' && sample.title !== '') page.title = sample.title;
     if (typeof sample.event_date === 'string') page.event_date = sample.event_date;
     if (typeof sample.last_access === 'string') page.last_access = sample.last_access;
-    if (typeof sample.bad_http_status === 'number') page.bad_http_status = sample.bad_http_status;
+    // Именно isInteger, а не `typeof === 'number'`: последний пропускает NaN и Infinity,
+    // и в ответе появляется «HTTP NaN» — код статуса, которого не бывает.
+    if (Number.isInteger(sample.bad_http_status)) page.bad_http_status = sample.bad_http_status;
     if (typeof sample.target_url === 'string' && sample.target_url !== '') page.target_url = sample.target_url;
     pages.push(page);
   }
@@ -108,7 +110,9 @@ export function formatExcludedPages(pages) {
   if (!Array.isArray(pages) || pages.length === 0) return '';
   const lines = pages.map((page) => {
     const details = [];
-    if (typeof page.bad_http_status === 'number') details.push(`HTTP ${page.bad_http_status}`);
+    // Тот же капкан, что и в selectExcludedPages: NaN — это `number`, и строка «HTTP NaN»
+    // прошла бы к читателю как настоящий код ответа.
+    if (Number.isInteger(page.bad_http_status)) details.push(`HTTP ${page.bad_http_status}`);
     if (page.target_url) details.push(`→ ${page.target_url}`);
     const suffix = details.length > 0 ? ` (${details.join(', ')})` : '';
     return `- ${page.url} — ${page.reason ?? 'REASON_NOT_REPORTED'}${suffix}`;
@@ -125,6 +129,11 @@ export function formatExcludedPages(pages) {
  * Именно это здесь и делается, а не «тот же вызов под другим именем».
  *
  * Сеть инжектится: `fetchPage(offset, pageSize)` → `{samples, count}`.
+ *
+ * ⚠️ `maxRequests` — потолок числа СТРАНИЦ (вызовов `fetchPage`), а не HTTP-запросов:
+ * повторы внутри одного `fetchPage` (ретраи по 429/5xx) обходу не видны и в счётчик не
+ * попадают. Поэтому и метрика в ответе называется `page_requests`, а не `requests`:
+ * настоящих HTTP-вызовов может быть кратно больше.
  *
  * @param {{fetchPage: (offset: number, pageSize: number) => Promise<{samples?: unknown, count?: unknown}>,
  *   limit?: number, offset?: number, maxRequests?: number, pageSize?: number}} options
@@ -149,10 +158,29 @@ export async function collectExcludedPages({
     if (Number.isFinite(data.count)) totalEvents = data.count;
     const all = Array.isArray(data.samples) ? data.samples : [];
     scannedEvents += all.length;
-    collected.push(...selectExcludedPages(all));
-    // Пустая страница НЕ двигает курсор — без этого выхода цикл крутился бы до maxRequests
-    // на одном и том же offset.
-    cursor += all.length;
+
+    // Идём ПОЭЛЕМЕНТНО и двигаем курсор на прочитанное, а не на всю выборку: `next_offset`
+    // обязан указывать на первое НЕПРОЧИТАННОЕ событие. Прежний вариант складывал страницу
+    // целиком и отсекал лишнее через `slice(0, limit)` — исключённые страницы из отсечённого
+    // хвоста терялись НАВСЕГДА, потому что следующий вызов с `offset = next_offset` начинал
+    // уже за ними.
+    let consumed = 0;
+    for (const sample of all) {
+      consumed += 1;
+      collected.push(...selectExcludedPages([sample]));
+      if (collected.length >= limit) break;
+    }
+    // Пустая страница НЕ двигает курсор — без выхода по неполной странице цикл крутился бы
+    // до maxRequests на одном и том же offset.
+    cursor += consumed;
+
+    if (collected.length >= limit) {
+      // Предел набран. Концом потока это можно объявлять ТОЛЬКО когда страница дочитана до
+      // конца и была неполной. Иначе в уже загруженной странице остался непрочитанный хвост,
+      // и `exhausted: true` не просто соврал бы — он закрыл бы клиенту путь к остатку.
+      exhausted = consumed === all.length && all.length < pageSize;
+      break;
+    }
     // Неполная страница = конец потока. Пустая страница попадает сюда же: без этого выхода
     // курсор не двигался бы и обход крутил бы maxRequests одинаковых запросов на одном offset.
     if (all.length < pageSize) {
@@ -166,8 +194,11 @@ export async function collectExcludedPages({
   }
 
   return {
-    pages: collected.slice(0, limit),
-    requests,
+    // Обрезать нечего: предел держит сам цикл — он останавливается на том событии, где
+    // набралось `limit`, поэтому `collected` физически не может перерасти `limit`.
+    // Прежний `slice(0, limit)` здесь стал бы мёртвым кодом.
+    pages: collected,
+    page_requests: requests,
     scanned_events: scannedEvents,
     next_offset: cursor,
     exhausted,

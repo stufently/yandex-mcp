@@ -10,11 +10,11 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 |---------|-------------|-------|
 | [yandex-search-mcp](packages/yandex-search-mcp) | Yandex Search API v2 (Cloud) | 1 |
 | [yandex-wordstat-mcp](packages/yandex-wordstat-mcp) | Yandex Wordstat (Cloud Search API v2) -- keyword research | 5 |
-| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 31 |
+| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 32 |
 | [yandex-metrika-mcp](packages/yandex-metrika-mcp) | Yandex Metrika API -- web analytics | 12 |
 | [yandex-direct-mcp](packages/yandex-direct-mcp) | Yandex Direct API v5 -- ad campaigns | 43 |
 
-**92 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
+**93 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
 
 > **Package names.** These packages will be published under the **`@stufently/*` scope**
 > (`@stufently/yandex-webmaster-mcp` and so on). The *unscoped* names — `yandex-search-mcp`,

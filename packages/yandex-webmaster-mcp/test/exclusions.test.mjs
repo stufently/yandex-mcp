@@ -131,6 +131,41 @@ test('запись без url в список не попадает — стро
   assert.deepEqual(selectExcludedPages([null, 'str', 42]), []);
 });
 
+test('нечисловой код ответа не превращается в «HTTP NaN»', () => {
+  // `typeof NaN === 'number'`, поэтому проверка по typeof пропускала NaN и Infinity —
+  // и в ответе появлялся код статуса, которого не существует.
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+    const pages = selectExcludedPages([
+      {
+        url: 'https://example.com/x',
+        event: 'REMOVED_FROM_SEARCH',
+        excluded_url_status: 'HTTP_ERROR',
+        bad_http_status: bad,
+      },
+    ]);
+    assert.deepEqual(pages, [{ url: 'https://example.com/x', reason: 'HTTP_ERROR' }]);
+    assert.doesNotMatch(formatExcludedPages(pages), /HTTP /);
+  }
+  // Настоящий код при этом обязан остаться.
+  const good = selectExcludedPages([
+    {
+      url: 'https://example.com/y',
+      event: 'REMOVED_FROM_SEARCH',
+      excluded_url_status: 'HTTP_ERROR',
+      bad_http_status: 503,
+    },
+  ]);
+  assert.equal(good[0].bad_http_status, 503);
+  assert.match(formatExcludedPages(good), /HTTP 503/);
+});
+
+test('форматтер сам не печатает NaN, даже если запись пришла мимо selectExcludedPages', () => {
+  assert.doesNotMatch(
+    formatExcludedPages([{ url: 'https://example.com/x', reason: 'HTTP_ERROR', bad_http_status: Number.NaN }]),
+    /NaN/,
+  );
+});
+
 test('строка списка показывает причину и уточнения', () => {
   assert.equal(
     formatExcludedPages([
@@ -233,6 +268,10 @@ test('потолок запросов останавливает обход и �
   assert.deepEqual(result.pages, []);
   assert.equal(result.exhausted, false);
   assert.equal(result.next_offset, 30);
+  // Метрика считает СТРАНИЦЫ, а не HTTP-вызовы: ретраи внутри fetchPage обходу не видны.
+  // Имя `page_requests` обязано это говорить, иначе цифра читается как число запросов к API.
+  assert.equal(result.page_requests, 3);
+  assert.equal(result.requests, undefined, 'старое имя обещало потолок HTTP-вызовов, которого нет');
 });
 
 test('обход не отдаёт больше запрошенного', async () => {
@@ -249,6 +288,116 @@ test('обход не отдаёт больше запрошенного', async
     pageSize: 10,
   });
   assert.equal(result.pages.length, 7);
+});
+
+test('предел, набранный В СЕРЕДИНЕ страницы, не съедает её хвост', async () => {
+  // Регрессия: страница добавлялась в накопитель ЦЕЛИКОМ, курсор двигался на всю её длину,
+  // а лишнее отсекалось `slice(0, limit)`. Исключённые страницы из отсечённого хвоста
+  // пропадали навсегда: следующий вызов с `offset = next_offset` начинал уже ЗА ними.
+  const result = await collectExcludedPages({
+    fetchPage: async () => ({
+      count: 5,
+      samples: Array.from({ length: 5 }, (_, i) => ({
+        url: `https://example.com/${i}`,
+        event: 'REMOVED_FROM_SEARCH',
+        excluded_url_status: 'LOW_QUALITY',
+      })),
+    }),
+    limit: 2,
+    pageSize: 5,
+  });
+  assert.deepEqual(
+    result.pages.map((p) => p.url),
+    ['https://example.com/0', 'https://example.com/1'],
+  );
+  // Курсор обязан указывать на первое НЕПРОЧИТАННОЕ событие, а не за конец страницы.
+  assert.equal(result.next_offset, 2);
+  // В уже загруженной странице остался непрочитанный хвост — это не конец потока.
+  assert.equal(result.exhausted, false);
+});
+
+test('два последовательных вызова отдают весь поток без пропусков и дублей', async () => {
+  // Тот же дефект с другой стороны: важен не один ответ, а СКЛЕЙКА — клиент продолжает
+  // обход с next_offset, и вместе вызовы обязаны покрыть поток ровно один раз.
+  // Числа подобраны так, чтобы предел набирался В СЕРЕДИНЕ страницы (12 событий,
+  // pageSize 5, limit 2): на границе страницы дефект не проявляется.
+  const stream = Array.from({ length: 12 }, (_, i) => ({
+    url: `https://example.com/${i}`,
+    event: i % 2 === 0 ? 'REMOVED_FROM_SEARCH' : 'APPEARED_IN_SEARCH',
+    excluded_url_status: 'DUPLICATE',
+  }));
+  const fetchPage = async (offset, pageSize) => ({
+    count: stream.length,
+    samples: stream.slice(offset, offset + pageSize),
+  });
+
+  const first = await collectExcludedPages({ fetchPage, limit: 2, pageSize: 5 });
+  assert.deepEqual(
+    first.pages.map((p) => p.url),
+    ['https://example.com/0', 'https://example.com/2'],
+  );
+  assert.equal(first.exhausted, false);
+
+  const second = await collectExcludedPages({ fetchPage, limit: 2, offset: first.next_offset, pageSize: 5 });
+  assert.deepEqual(
+    second.pages.map((p) => p.url),
+    ['https://example.com/4', 'https://example.com/6'],
+  );
+
+  const seen = [...first.pages, ...second.pages].map((p) => p.url);
+  assert.equal(new Set(seen).size, seen.length, 'дублей между вызовами быть не должно');
+  // Пропусков тоже: между последней страницей первого вызова и первой страницей второго
+  // не должно потеряться ни одного исключённого события.
+  assert.deepEqual(seen, [
+    'https://example.com/0',
+    'https://example.com/2',
+    'https://example.com/4',
+    'https://example.com/6',
+  ]);
+});
+
+test('обход по кусочкам добирает ровно все исключённые страницы потока', async () => {
+  const stream = Array.from({ length: 12 }, (_, i) => ({
+    url: `https://example.com/${i}`,
+    event: i % 2 === 0 ? 'REMOVED_FROM_SEARCH' : 'APPEARED_IN_SEARCH',
+  }));
+  const fetchPage = async (offset, pageSize) => ({
+    count: stream.length,
+    samples: stream.slice(offset, offset + pageSize),
+  });
+
+  const seen = [];
+  let offset = 0;
+  for (let guard = 0; guard < 20; guard += 1) {
+    const chunk = await collectExcludedPages({ fetchPage, limit: 2, offset, pageSize: 5 });
+    seen.push(...chunk.pages.map((p) => p.url));
+    offset = chunk.next_offset;
+    if (chunk.exhausted) break;
+  }
+  assert.deepEqual(
+    seen,
+    [0, 2, 4, 6, 8, 10].map((i) => `https://example.com/${i}`),
+  );
+});
+
+test('предел, набранный на последнем событии неполной страницы, — это конец потока', async () => {
+  // Обратная сторона: непрочитанного хвоста НЕТ и страница неполная, значит соврать
+  // «продолжай с next_offset» тоже нельзя — там пусто.
+  const result = await collectExcludedPages({
+    fetchPage: async () => ({
+      count: 3,
+      samples: [
+        { url: 'https://example.com/a', event: 'REMOVED_FROM_SEARCH' },
+        { url: 'https://example.com/b', event: 'APPEARED_IN_SEARCH' },
+        { url: 'https://example.com/c', event: 'REMOVED_FROM_SEARCH' },
+      ],
+    }),
+    limit: 2,
+    pageSize: 5,
+  });
+  assert.equal(result.pages.length, 2);
+  assert.equal(result.next_offset, 3);
+  assert.equal(result.exhausted, true);
 });
 
 test('дойдя до count, обход останавливается сам', async () => {
