@@ -16,18 +16,18 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 
 **93 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
 
-> **Package names.** These packages will be published under the **`@stufently/*` scope**
-> (`@stufently/yandex-webmaster-mcp` and so on). The *unscoped* names — `yandex-search-mcp`,
+> **Package names.** The packages go to npm under the **`@stufently/*` scope**
+> (`@stufently/yandex-webmaster-mcp` and so on), starting with v2.2.0. The *unscoped* names — `yandex-search-mcp`,
 > `yandex-wordstat-mcp`, `yandex-webmaster-mcp`, `yandex-metrika-mcp` — belong to a
 > **different publisher** on the public registry (`altrr2`,
 > [altrr2/yandex-tools-mcp](https://github.com/altrr2/yandex-tools-mcp), first published
 > 2025-12-20, three months before this repo existed). Never `npx` an unscoped name with your
-> Yandex tokens in the environment: that hands your credentials to unrelated code. Nothing has
-> been published to the scope yet, so for now run the servers from source, as shown below.
+> Yandex tokens in the environment: that hands your credentials to unrelated code. Always type
+> the `@stufently/` prefix.
 
 ## Install
 
-**Prerequisites for both options:** Node.js >= 22 and [Bun](https://bun.sh/) on your `PATH`.
+**Prerequisites for options A and B:** Node.js >= 22 and [Bun](https://bun.sh/) on your `PATH`.
 Bun is not optional — the repo carries a `bun.lock`, so Claude Code installs the plugin's
 dependencies with Bun and does not fall back to npm.
 
@@ -123,8 +123,51 @@ in Direct. Additive and reversible writes (`create-counter`, `add-host`, `add_*`
 suspend) run without one, so the confirmation stays a signal rather than a reflex. Search and
 Wordstat are read-only and have nothing to guard.
 
-> Nothing is published to npm yet, so there is no `npx` form. Do not `npx` the **unscoped**
-> names — they belong to a different publisher (see the note above).
+### Option C — from npm via `npx`
+
+No clone and no Bun: `npx` fetches the package and runs its `bin`. Node.js >= 22 is the only
+prerequisite.
+
+> **Status.** v2.2.0 is tagged, and the npm upload is a separate manual step. If
+> `npm view @stufently/yandex-webmaster-mcp version` still answers `E404`, the packages are
+> not on the registry yet: use option A or B until it prints a version.
+
+| Package | Command |
+|---|---|
+| Search | `npx -y @stufently/yandex-search-mcp` |
+| Wordstat | `npx -y @stufently/yandex-wordstat-mcp` |
+| Webmaster | `npx -y @stufently/yandex-webmaster-mcp` |
+| Metrika | `npx -y @stufently/yandex-metrika-mcp` |
+| Direct | `npx -y @stufently/yandex-direct-mcp` |
+
+Register one in Claude Code:
+
+```bash
+claude mcp add yandex-webmaster --scope user \
+  --env YANDEX_WEBMASTER_TOKEN=... \
+  -- npx -y @stufently/yandex-webmaster-mcp
+```
+
+Or in any client's JSON config:
+
+```json
+{
+  "mcpServers": {
+    "yandex-webmaster": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-webmaster-mcp"],
+      "env": { "YANDEX_WEBMASTER_TOKEN": "your-oauth-token" }
+    }
+  }
+}
+```
+
+The OAuth helper works the same way: `npx -y @stufently/yandex-webmaster-mcp auth` (and
+`@stufently/yandex-metrika-mcp auth`). Append a version (`@stufently/yandex-webmaster-mcp@2.2.0`)
+to pin it instead of taking the latest release on every start.
+
+Do not `npx` the **unscoped** names — they belong to a different publisher (see the note
+above).
 
 ## Client Configuration
 

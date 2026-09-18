@@ -2,17 +2,15 @@
 
 ## TODO
 
-- [ ] **Опубликовать первый релиз в скоуп `@stufently/*`** (за владельцем: нужен `NPM_TOKEN`
-      с правом на скоуп в секретах репо). Имена уже переименованы, `publish.yml` готов,
-      публикация идёт по тегу `v*.*.*` — тег сознательно НЕ ставился. Без скоупа публиковать
-      нельзя: неймспейсы `yandex-{search,wordstat,webmaster,metrika}-mcp` принадлежат издателю
-      `altrr2` (репо `altrr2/yandex-tools-mcp`, первая публикация 2025-12-20).
-      Упаковка проверена 2026-08-21 (`npm pack --dry-run` по всем пяти): манифесты полные
-      (`keywords`/`homepage`/`bugs`/`author` добавлены), шебанги на месте, тарболлы верные.
-      Осталось ровно три шага владельца: (1) granular `NPM_TOKEN` с read/write на скоуп И
-      включённым «Bypass 2FA» (без него неинтерактивный `npm publish` из CI упадёт) в секреты
-      репо, (2) `git tag v2.2.0 && git push --tags`. Версии пяти пакетов уже выровнены на
-      `2.2.0` (2026-08-21), тег обязан совпасть с ними.
+- [ ] **Опубликовать `v2.2.0` в npm** (за владельцем). Тег `v2.2.0` и GitHub Release
+      поставлены 2026-09-18; тарболлы и `npm publish --dry-run` проверены по всем пяти, имена
+      в реестре свободны. Токена на хосте нет, а в секретах репо нет `NPM_TOKEN` — поэтому
+      `publish.yml` на тег упал на авторизации, это ожидаемо. Публикация — одной командой
+      владельца из корня репо (интерактивный `npm login`, нужен TTY):
+      `docker run --rm -it -u 1002:1002 -e HOME=/tmp -v "$PWD":/w:ro -w /w node:22-alpine sh -c 'npm login && for p in search wordstat webmaster metrika direct; do (cd packages/yandex-$p-mcp && npm publish --access public) || exit 1; done'`
+      Проверка: `npm view @stufently/yandex-webmaster-mcp version` → `2.2.0`. После публикации
+      убрать из README блок **Status** в Option C (он оговаривает, что пакетов в реестре ещё нет). Имена без
+      скоупа не трогать: `yandex-{search,wordstat,webmaster,metrika}-mcp` принадлежат `altrr2`.
 - [ ] После первого релиза перейти на npm trusted publishing (OIDC) и убрать долгоживущий
       `NPM_TOKEN` — `id-token: write` в `publish.yml` уже стоит.
 - [ ] Версия плагина живёт в `.claude-plugin/plugin.json` и закреплена на `1.0.0`; повышать её
