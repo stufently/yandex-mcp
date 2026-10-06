@@ -1018,6 +1018,8 @@ async function runServer() {
             text:
               `Verification state: ${data.verification_state || 'UNKNOWN'}` +
               `${data.verification_type ? ` (via ${data.verification_type})` : ''}\n` +
+              `${data.verification_uin ? `Verification UIN: ${data.verification_uin} (HTML_FILE: yandex_${data.verification_uin}.html)\n` : ''}` +
+              `${data.fail_info ? `Failure: ${data.fail_info.reason || 'UNKNOWN'} — ${data.fail_info.message || ''}\n` : ''}` +
               `Applicable methods: ${methods || 'none'}`,
           },
         ],

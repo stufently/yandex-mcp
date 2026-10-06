@@ -9,6 +9,9 @@
   в веб-панели. Аддитивный писатель (`destructiveHint: false`), итог проверки — через `verify-host`.
 
 ### Changed
+- `verify-host` печатает в тексте `verification_uin` хоста (с именем HTML-файла) и `fail_info`
+  при провале. UIN у каждого хоста свой; без него в тексте боевой прогон по savepearlharbor.com
+  положил файл с чужим кодом и видел только `VERIFICATION_FAILED`.
 - `apiRequestPost` принимает query-параметры, а при `body === undefined` шлёт запрос без тела и
   без `Content-Type`; сборка URL вынесена в общий `buildUrl` (им же пользуется `apiRequest`).
 - `scripts/lib/fetch-stub.mjs`: фикстура может требовать `method` и `noBody` — тест проверяет,

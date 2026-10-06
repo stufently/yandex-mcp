@@ -44,6 +44,28 @@ test('ошибка API при запуске проверки доходит д�
   assert.match(textOf(result), /VERIFICATION_ALREADY_IN_PROGRESS/);
 });
 
+test('verify-host печатает UIN хоста и причину провала, а не только состояние', async () => {
+  // UIN у каждого хоста СВОЙ: боевой прогон 06.10 положил на сайт файл с кодом другого
+  // хоста, и без UIN/причины в тексте провал PAGE_UNAVAILABLE был не виден.
+  const result = await callTool(PKG, 'verify-host', { host_id: HOST }, [
+    USER,
+    {
+      match: '/verification',
+      method: 'GET',
+      body: {
+        verification_uin: '47c80009843c4dee',
+        verification_state: 'VERIFICATION_FAILED',
+        verification_type: 'HTML_FILE',
+        fail_info: { reason: 'PAGE_UNAVAILABLE', message: 'Page … was unavailable' },
+        applicable_verifiers: ['HTML_FILE'],
+      },
+    },
+  ]);
+  const text = textOf(result);
+  assert.match(text, /Verification UIN: 47c80009843c4dee \(HTML_FILE: yandex_47c80009843c4dee\.html\)/);
+  assert.match(text, /Failure: PAGE_UNAVAILABLE — Page … was unavailable/);
+});
+
 test('start-verification: аддитивный писатель с перечислимым способом проверки', async () => {
   const tools = await listTools(PKG);
   const tool = tools.find((t) => t.name === 'start-verification');

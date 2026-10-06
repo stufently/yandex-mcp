@@ -217,7 +217,7 @@ removed, 196 appeared, **81 URL в обоих списках** — до 29% ст
 Проверено по справочнику — эти ресурсы существуют, звать их сейчас нечем (нужно —
 заводи тул, а не выдумывай обходной путь):
 
-`POST /verification` (запуск подтверждения прав), `GET /owners` (кто подтвердил права),
+`GET /owners` (кто подтвердил права),
 `GET /search-queries/{query-id}/history` (история одного запроса),
 `POST /query-analytics/list` (мониторинг запросов), `POST|GET /indexing/archive`
 (асинхронная выгрузка архива всех страниц), `DELETE /user-added-sitemaps/{id}`,
