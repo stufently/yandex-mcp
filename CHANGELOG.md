@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-09 — Вебмастер: запуск проверки прав
+
+### Added
+- `yandex-webmaster`: тул **`start-verification`** (`host_id`, `verification_type` —
+  `HTML_FILE` / `META_TAG` / `DNS`) — `POST /user/{uid}/hosts/{host_id}/verification?verification_type=…`
+  без тела. Раньше `verify-host` только читал состояние, и подтверждение приходилось запускать
+  в веб-панели. Аддитивный писатель (`destructiveHint: false`), итог проверки — через `verify-host`.
+
+### Changed
+- `apiRequestPost` принимает query-параметры, а при `body === undefined` шлёт запрос без тела и
+  без `Content-Type`; сборка URL вынесена в общий `buildUrl` (им же пользуется `apiRequest`).
+- `scripts/lib/fetch-stub.mjs`: фикстура может требовать `method` и `noBody` — тест проверяет,
+  что запуск проверки уходит именно POST'ом без тела и с `verification_type` в query.
+
 ## 2026-10-09 — MCP Registry и установка в один шаг
 
 ### Added

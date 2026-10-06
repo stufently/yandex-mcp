@@ -95,7 +95,7 @@ async function runServer() {
 
   // --- API Request ---
 
-  async function apiRequest(endpoint, queryParams = {}) {
+  function buildUrl(endpoint, queryParams = {}) {
     const url = new URL(`${API_BASE}${endpoint}`);
     for (const [key, value] of Object.entries(queryParams)) {
       if (value !== undefined && value !== null) {
@@ -106,6 +106,11 @@ async function runServer() {
         }
       }
     }
+    return url;
+  }
+
+  async function apiRequest(endpoint, queryParams = {}) {
+    const url = buildUrl(endpoint, queryParams);
 
     const response = await fetchWithRetry(url.toString(), {
       method: 'GET',
@@ -126,16 +131,20 @@ async function runServer() {
     return safeJsonParse(response);
   }
 
-  async function apiRequestPost(endpoint, body) {
-    const url = `${API_BASE}${endpoint}`;
-    const response = await fetchWithRetry(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `OAuth ${getToken()}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+  /**
+   * POST к API. `body === undefined` — запрос БЕЗ тела и без Content-Type: так устроен,
+   * например, запуск проверки прав (`POST …/verification?verification_type=…`), где
+   * всё передаётся query-параметрами.
+   */
+  async function apiRequestPost(endpoint, body, queryParams = {}) {
+    const url = buildUrl(endpoint, queryParams);
+    const headers = { Authorization: `OAuth ${getToken()}` };
+    const init = { method: 'POST', headers };
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(body);
+    }
+    const response = await fetchWithRetry(url.toString(), init);
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
@@ -959,7 +968,7 @@ async function runServer() {
     },
   );
 
-  // === Host Management (2 tools) ===
+  // === Host Management (4 tools) ===
 
   // add-host
   registerAdditiveWriteTool(
@@ -1010,6 +1019,47 @@ async function runServer() {
               `Verification state: ${data.verification_state || 'UNKNOWN'}` +
               `${data.verification_type ? ` (via ${data.verification_type})` : ''}\n` +
               `Applicable methods: ${methods || 'none'}`,
+          },
+        ],
+        structuredContent: data,
+      };
+    },
+  );
+
+  // start-verification
+  //
+  // POST /user/{user-id}/hosts/{host-id}/verification?verification_type=… без тела
+  // (справочник «Запуск процедуры проверки прав на сайт»). Код (verification_uin) уже
+  // должен лежать на сайте; проверка асинхронная — ответ сразу IN_PROGRESS, итог
+  // смотрится через verify-host. Аддитивная: ничего не удаляет и не отзывает.
+  registerAdditiveWriteTool(
+    'start-verification',
+    {
+      title: 'Start host verification',
+      description:
+        'Start the Yandex Webmaster ownership check for a host. Put the verification_uin (see verify-host) ' +
+        'on the site first: HTML_FILE — file yandex_<uin>.html, META_TAG — <meta name="yandex-verification">, ' +
+        'DNS — TXT record. The check runs asynchronously: the call returns the current state (usually ' +
+        'IN_PROGRESS); poll verify-host for VERIFIED or VERIFICATION_FAILED (reason in fail_info).',
+      inputSchema: {
+        host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
+        verification_type: z
+          .enum(['HTML_FILE', 'META_TAG', 'DNS'])
+          .describe('Verification method; must be among applicable_verifiers from verify-host'),
+      },
+    },
+    async ({ host_id, verification_type }) => {
+      const data = await apiRequestPost(await hostUrl(host_id, '/verification'), undefined, {
+        verification_type,
+      });
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              `Verification started via ${verification_type}\n` +
+              `Verification state: ${data.verification_state || 'UNKNOWN'}\n` +
+              'Poll verify-host for the result.',
           },
         ],
         structuredContent: data,

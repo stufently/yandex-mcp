@@ -14,7 +14,7 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 | [yandex-metrika-mcp](packages/yandex-metrika-mcp) | Yandex Metrika API -- web analytics | 12 |
 | [yandex-direct-mcp](packages/yandex-direct-mcp) | Yandex Direct API v5 -- ad campaigns | 43 |
 
-**93 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
+**94 tools total** across all packages (counted by `node scripts/smoke-tools.mjs`).
 
 > **Package names.** The packages go to npm under the **`@stufently/*` scope**
 > (`@stufently/yandex-webmaster-mcp` and so on), starting with v2.2.0. The *unscoped* names — `yandex-search-mcp`,
@@ -383,7 +383,7 @@ onto real tools listed in the per-package READMEs.
 - "Give me the Yandex region tree down to depth 2 so I can pick region IDs for filtering."
 - "Compare desktop vs phone demand for «доставка еды»."
 
-### yandex-webmaster (32 tools)
+### yandex-webmaster (33 tools)
 
 - "List my verified sites in Yandex Webmaster with their SQI."
 - "Add https://example.com/sitemap.xml to Webmaster for example.com."
