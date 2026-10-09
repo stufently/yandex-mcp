@@ -1,5 +1,6 @@
 {
   "name": "@stufently/yandex-metrika-mcp",
+  "mcpName": "io.github.stufently/yandex-metrika-mcp",
   "version": "2.2.0",
   "description": "MCP server for Yandex Metrika API — web analytics, traffic, audience data",
   "keywords": [

@@ -49,3 +49,13 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Runs once all five packages are on npm: the registry checks each package's
+  # mcpName against npm before it accepts the entry.
+  registry:
+    name: MCP Registry
+    needs: publish
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/registry.yml

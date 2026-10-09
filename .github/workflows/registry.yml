@@ -1,0 +1,73 @@
+name: Publish to MCP Registry
+
+# Lists the five servers in the official MCP registry
+# (registry.modelcontextprotocol.io) as io.github.stufently/yandex-*-mcp.
+#
+# The registry accepts an npm entry only once that exact version is on npm and
+# its package.json carries a matching `mcpName`, so this runs after
+# publish.yml (workflow_call) or by hand once the packages are on npm.
+# Authentication is the workflow's short-lived GitHub OIDC token: no stored
+# secret, and it is trusted for everything under io.github.stufently/*.
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Space-separated short names to publish"
+        required: true
+        default: "search wordstat webmaster metrika direct"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PUBLISHER_VERSION: "1.8.1"
+  PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+  REGISTRY: "https://registry.modelcontextprotocol.io"
+
+jobs:
+  registry:
+    name: Publish server.json files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install mcp-publisher
+        run: |
+          url="https://github.com/modelcontextprotocol/registry/releases/download/v${PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSL -o publisher.tar.gz "$url"
+          echo "${PUBLISHER_SHA256}  publisher.tar.gz" | sha256sum -c -
+          tar -xzf publisher.tar.gz mcp-publisher
+
+      - name: Log in with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish
+        env:
+          PACKAGES: ${{ inputs.packages || 'search wordstat webmaster metrika direct' }}
+        run: |
+          set -euo pipefail
+          for short in $PACKAGES; do
+            file="packages/yandex-${short}-mcp/server.json"
+            name=$(jq -r '.name' "$file")
+            version=$(jq -r '.version' "$file")
+            pkg=$(jq -r '.packages[0].identifier' "$file")
+            if [ "$(jq -r '.packages[0].version' "$file")" != "$version" ]; then
+              echo "::error file=$file::server version and package version differ"; exit 1
+            fi
+            # Already listed: the registry refuses to overwrite a version.
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              "$REGISTRY/v0/servers/$(jq -rn --arg n "$name" '$n|@uri')/versions/$version")
+            if [ "$code" = "200" ]; then
+              echo "$name $version is already in the registry, skipping"; continue
+            fi
+            # Fail with a readable reason instead of the registry's ownership error.
+            npm view "$pkg@$version" mcpName > npm-mcpname.txt
+            if [ "$(cat npm-mcpname.txt)" != "$name" ]; then
+              echo "::error file=$file::$pkg@$version on npm has mcpName '$(cat npm-mcpname.txt)', expected '$name'"
+              exit 1
+            fi
+            ./mcp-publisher publish "$file"
+          done

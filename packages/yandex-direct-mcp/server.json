@@ -1,0 +1,47 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.stufently/yandex-direct-mcp",
+  "title": "Yandex Direct MCP",
+  "description": "MCP server for Yandex Direct API v5 — campaigns, ads, keywords, reports",
+  "repository": {
+    "url": "https://github.com/stufently/yandex-mcp",
+    "source": "github",
+    "subfolder": "packages/yandex-direct-mcp"
+  },
+  "version": "2.2.0",
+  "websiteUrl": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-direct-mcp#readme",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@stufently/yandex-direct-mcp",
+      "version": "2.2.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "YANDEX_DIRECT_TOKEN",
+          "description": "OAuth token for Yandex Direct API v5",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "YANDEX_DIRECT_CLIENT_LOGIN",
+          "description": "Client login, only for agency accounts",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "YANDEX_DIRECT_SANDBOX",
+          "description": "Set to true to use the Direct sandbox",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.stufently/yandex-search-mcp",
+  "title": "Yandex Search MCP",
+  "description": "MCP server for Yandex Search API (v2, Cloud)",
+  "repository": {
+    "url": "https://github.com/stufently/yandex-mcp",
+    "source": "github",
+    "subfolder": "packages/yandex-search-mcp"
+  },
+  "version": "2.2.0",
+  "websiteUrl": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-search-mcp#readme",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@stufently/yandex-search-mcp",
+      "version": "2.2.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "YANDEX_SEARCH_API_KEY",
+          "description": "Yandex Cloud API key (service account with search-api.webSearch.user)",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "YANDEX_FOLDER_ID",
+          "description": "Yandex Cloud folder ID",
+          "isRequired": true,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

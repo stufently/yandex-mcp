@@ -1,0 +1,33 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.stufently/yandex-webmaster-mcp",
+  "title": "Yandex Webmaster MCP",
+  "description": "MCP server for Yandex Webmaster API — site analytics, indexing, search queries",
+  "repository": {
+    "url": "https://github.com/stufently/yandex-mcp",
+    "source": "github",
+    "subfolder": "packages/yandex-webmaster-mcp"
+  },
+  "version": "2.2.0",
+  "websiteUrl": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-webmaster-mcp#readme",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@stufently/yandex-webmaster-mcp",
+      "version": "2.2.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "YANDEX_WEBMASTER_TOKEN",
+          "description": "OAuth token for Yandex Webmaster",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

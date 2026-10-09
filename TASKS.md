@@ -9,7 +9,11 @@
       владельца из корня репо (интерактивный `npm login`, нужен TTY):
       `docker run --rm -it -u 1002:1002 -e HOME=/tmp -v "$PWD":/w:ro -w /w node:22-alpine sh -c 'npm login && for p in search wordstat webmaster metrika direct; do (cd packages/yandex-$p-mcp && npm publish --access public) || exit 1; done'`
       Проверка: `npm view @stufently/yandex-webmaster-mcp version` → `2.2.0`. После публикации
-      убрать из README блок **Status** в Option C (он оговаривает, что пакетов в реестре ещё нет). Имена без
+      убрать из README блок **Status** в «Quick start — npx» (он оговаривает, что пакетов в реестре ещё нет)
+      и запустить `gh workflow run registry.yml` — публикация в MCP Registry (`server.json` и `mcpName`
+      готовы; реестр примет запись только после npm). Проверка:
+      `curl -fsS "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.stufently/yandex"`.
+      Публиковать из `main`, не из тега: у тега `v2.2.0` в `package.json` нет `mcpName`. Имена без
       скоупа не трогать: `yandex-{search,wordstat,webmaster,metrika}-mcp` принадлежат `altrr2`.
 - [ ] После первого релиза перейти на npm trusted publishing (OIDC) и убрать долгоживущий
       `NPM_TOKEN` — `id-token: write` в `publish.yml` уже стоит.
