@@ -10,7 +10,7 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 |---------|-------------|-------|
 | [yandex-search-mcp](packages/yandex-search-mcp) | Yandex Search API v2 (Cloud) | 1 |
 | [yandex-wordstat-mcp](packages/yandex-wordstat-mcp) | Yandex Wordstat (Cloud Search API v2) -- keyword research | 5 |
-| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 32 |
+| [yandex-webmaster-mcp](packages/yandex-webmaster-mcp) | Yandex Webmaster API v4 -- site analytics | 33 |
 | [yandex-metrika-mcp](packages/yandex-metrika-mcp) | Yandex Metrika API -- web analytics | 12 |
 | [yandex-direct-mcp](packages/yandex-direct-mcp) | Yandex Direct API v5 -- ad campaigns | 43 |
 
@@ -468,7 +468,7 @@ bun run smoke
 packages/
   yandex-search-mcp/       # 1 tool   - Yandex Search  (src/parse.mjs — XML parsing)
   yandex-wordstat-mcp/     # 5 tools  - Keyword research (src/dates.mjs — API window rules)
-  yandex-webmaster-mcp/    # 32 tools - Site analytics  (SKILL.md — agent playbook;
+  yandex-webmaster-mcp/    # 33 tools - Site analytics  (SKILL.md — agent playbook;
                            #                            src/series.mjs — time series shapes;
                            #                            src/exclusions.mjs — exclusion reasons)
   yandex-metrika-mcp/      # 12 tools - Web analytics

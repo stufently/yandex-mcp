@@ -16,6 +16,8 @@
   без `Content-Type`; сборка URL вынесена в общий `buildUrl` (им же пользуется `apiRequest`).
 - `scripts/lib/fetch-stub.mjs`: фикстура может требовать `method` и `noBody` — тест проверяет,
   что запуск проверки уходит именно POST'ом без тела и с `verification_type` в query.
+- README / `SKILL.md`: у Webmaster 33 тула (было 32); общий счёт 94 теперь сходится с
+  `node scripts/smoke-tools.mjs`.
 
 ## 2026-10-09 — MCP Registry и установка в один шаг
 

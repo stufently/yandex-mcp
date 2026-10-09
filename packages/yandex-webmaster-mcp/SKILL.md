@@ -5,7 +5,7 @@ description: Работа с сайтом в Яндекс Вебмастере �
 
 # Яндекс Вебмастер (API v4)
 
-Сервер `yandex-webmaster` — 32 тула поверх `https://api.webmaster.yandex.net/v4`.
+Сервер `yandex-webmaster` — 33 тула поверх `https://api.webmaster.yandex.net/v4`.
 Полный список тулов с параметрами — `README.md` рядом. Здесь — ЧТО в каком порядке
 звать, как читать ответы и чего в API нет вовсе.
 
