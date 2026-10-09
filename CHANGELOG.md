@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-09 — MCP Registry и установка в один шаг
+
+### Added
+- `packages/*/server.json` — описание каждого из пяти серверов для официального MCP Registry
+  (`io.github.stufently/yandex-{search,wordstat,webmaster,metrika,direct}-mcp`, npm, stdio,
+  переменные окружения с `isSecret`). Схема `2025-12-11`, `mcp-publisher validate` (v1.8.1) —
+  valid по всем пяти.
+- `mcpName` в `package.json` каждого пакета — по нему реестр сверяет, что npm-пакет наш.
+  Версия не менялась (`2.2.0`): пакетов в npm ещё нет, и ручная публикация из `main` унесёт поле.
+- `.github/workflows/registry.yml` — публикация в реестр через GitHub OIDC (`mcp-publisher
+  login github-oidc`, бинарь запинен версией и sha256). Запуск руками (`workflow_dispatch`) или
+  из `publish.yml` после npm. Пропускает уже опубликованную версию и падает с понятной
+  причиной, если в npm нет нужной версии или `mcpName` не совпадает.
+
+### Changed
+- README: единый путь установки через `npx` и готовые блоки для Claude Code (`claude mcp add`),
+  Claude Desktop / Cursor / Windsurf, Zed (`context_servers`) и Codex (`codex mcp add`,
+  `config.toml`). Плагин и установка из клона — в «Other ways to install». Проверено: каждый
+  пакет из `npm pack`, запущенный через `npx` в `node:22-alpine`, отвечает на `initialize` и
+  `tools/list` (1/5/33/12/43 тулов). Отмечено, что Search без ключа не стартует.
+- README: у Webmaster в таблице пакетов 33 тула (было 32; сумма 94 считалась уже с 33).
+
 ## 2026-09-18 — v2.2.0, первый релиз
 
 Первый тегированный релиз: `v2.2.0`, GitHub Release. Пять пакетов готовятся к npm под скоупом
