@@ -19,8 +19,7 @@
   Claude Desktop / Cursor / Windsurf, Zed (`context_servers`) и Codex (`codex mcp add`,
   `config.toml`). Плагин и установка из клона — в «Other ways to install». Проверено: каждый
   пакет из `npm pack`, запущенный через `npx` в `node:22-alpine`, отвечает на `initialize` и
-  `tools/list` (1/5/33/12/43 тулов). Отмечено, что Search без ключа не стартует.
-- README: у Webmaster в таблице пакетов 33 тула (было 32; сумма 94 считалась уже с 33).
+  `tools/list` (1/5/32/12/43 тулов на `main`). Отмечено, что Search без ключа не стартует.
 
 ## 2026-09-18 — v2.2.0, первый релиз
 
