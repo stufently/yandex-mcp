@@ -59,7 +59,7 @@ regular-audit order, the recrawl rules, how the three different time-series shap
 and — importantly — what API v4 does **not** have (IndexNow, robots.txt, site region, favicon,
 mobile status, Metrika binding), so nothing gets invented.
 
-## Tool Reference (32 tools)
+## Tool Reference (33 tools)
 
 ### Core (3)
 
@@ -190,7 +190,7 @@ deliberately not wrapped here.
 | `get-recrawl-queue` | List submitted recrawl tasks and their state | `host_id`, `limit?` (default: 10), `offset?` |
 | `get-recrawl-task` | Get the state of one recrawl task | `host_id`, `task_id` |
 
-### Host Management (3)
+### Host Management (4)
 
 These change your Webmaster account, not just read from it.
 
@@ -198,6 +198,7 @@ These change your Webmaster account, not just read from it.
 |------|-------------|------------|
 | `add-host` | **Write.** Add a site to Webmaster (needs verification afterwards). Additive — undone by `delete-host` | `host_url` (with protocol) |
 | `verify-host` | Get verification state and applicable verification methods | `host_id` |
+| `start-verification` | **Write.** Start the ownership check (`POST …/verification`, no body). The `verification_uin` must already be on the site; the check is asynchronous — poll `verify-host`. Additive | `host_id`, `verification_type` (`HTML_FILE` / `META_TAG` / `DNS`) |
 | `delete-host` | **Write.** Remove a site from Webmaster. Irreversible — see [Deleting a host](#deleting-a-host). **Needs `confirm: true`** | `host_id`, `confirm` |
 
 #### Deleting a host

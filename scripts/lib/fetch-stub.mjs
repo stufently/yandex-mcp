@@ -8,17 +8,23 @@
  *
  * Фикстуры приходят через env: `[{match, body, status?, end?}]`. `end: true` — совпадение
  * по КОНЦУ адреса, и такие фикстуры проверяются первыми; иначе — по вхождению, от самого
- * длинного `match` к короткому. Без этого `/v4/user` (эндпоинт `getUserId`) перехватывал бы
+ * длинного `match` к короткому. Необязательные `method` ("POST"…) и `noBody` (true — запрос
+ * обязан идти без тела) сужают совпадение: не тот метод/тело — фикстура не срабатывает, и
+ * вызов получает 404 «no fixture». Без сортировки `/v4/user` (эндпоинт `getUserId`) перехватывал бы
  * `/v4/user/1/hosts/…`, потому что он его префикс, и ответ решал бы порядок в массиве.
  */
 const fixtures = JSON.parse(process.env.MCP_FETCH_FIXTURES ?? '[]').sort(
   (a, b) => (b.end ? 1 : 0) - (a.end ? 1 : 0) || String(b.match).length - String(a.match).length,
 );
 
-globalThis.fetch = async (url) => {
+globalThis.fetch = async (url, init = {}) => {
   const target = String(url);
-  const hit = fixtures.find((fixture) =>
-    fixture.end ? target.endsWith(fixture.match) : target.includes(fixture.match),
+  const method = (init.method ?? 'GET').toUpperCase();
+  const hit = fixtures.find(
+    (fixture) =>
+      (fixture.end ? target.endsWith(fixture.match) : target.includes(fixture.match)) &&
+      (fixture.method === undefined || fixture.method === method) &&
+      (fixture.noBody === undefined || fixture.noBody === (init.body === undefined)),
   );
   if (!hit) {
     return new Response(JSON.stringify({ error_message: `no fixture for ${target}` }), {
