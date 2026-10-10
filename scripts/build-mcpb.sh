@@ -136,6 +136,64 @@ cat >"$WORK/mcpbignore" <<'EOF'
 tools-list.json
 EOF
 
+cat >"$WORK/pin-from-lock.py" <<'PY'
+# The bundle must carry the dependency versions bun.lock pins, not whatever
+# the package.json ranges resolve to on the day of the build. Rewrite the
+# staged package.json with exact direct versions plus npm overrides for every
+# locked package, or check that node_modules matches the lock after install.
+import json
+import os
+import re
+import sys
+
+mode, lock_path, stage = sys.argv[1:]
+text = open(lock_path, encoding="utf-8").read()
+lock = json.loads(re.sub(r",(\s*[}\]])", r"\1", text))
+pinned = {}
+for name, entry in lock["packages"].items():
+    spec = entry[0]
+    pkg_name, _, version = spec.rpartition("@")
+    if pkg_name != name or not version or version.startswith("workspace:"):
+        continue
+    pinned[name] = version
+
+manifest_path = f"{stage}/package.json"
+if mode == "pin":
+    manifest = json.load(open(manifest_path, encoding="utf-8"))
+    deps = manifest.get("dependencies") or {}
+    missing = sorted(set(deps) - set(pinned))
+    if missing:
+        sys.exit(f"bun.lock has no entry for {missing}")
+    manifest["dependencies"] = {name: pinned[name] for name in deps}
+    manifest["overrides"] = {n: v for n, v in sorted(pinned.items()) if not n.startswith("@biomejs/")}
+    manifest.pop("devDependencies", None)
+    with open(manifest_path, "w", encoding="utf-8") as handle:
+        json.dump(manifest, handle, indent=2)
+        handle.write("\n")
+elif mode == "check":
+    bad = []
+    root = f"{stage}/node_modules"
+    for dirpath, _dirs, files in os.walk(root):
+        if "package.json" not in files:
+            continue
+        parts = dirpath.split(os.sep)
+        if len(parts) >= 2 and parts[-2] == "node_modules":
+            name = parts[-1]
+        elif len(parts) >= 3 and parts[-3] == "node_modules" and parts[-2].startswith("@"):
+            name = f"{parts[-2]}/{parts[-1]}"
+        else:
+            continue
+        if name.startswith("."):
+            continue
+        version = json.load(open(f"{dirpath}/package.json", encoding="utf-8")).get("version")
+        if pinned.get(name) != version:
+            bad.append(f"{name}@{version} (lock {pinned.get(name)})")
+    if bad:
+        sys.exit("node_modules differs from bun.lock: " + ", ".join(sorted(set(bad))))
+else:
+    sys.exit(f"unknown mode {mode}")
+PY
+
 uid="$(id -u)"
 gid="$(id -g)"
 
@@ -148,9 +206,12 @@ for name in search wordstat webmaster metrika direct; do
   cp "mcpb/$pkg/manifest.json" "$stage/manifest.json"
   cp "$WORK/mcpbignore" "$stage/.mcpbignore"
 
+  python3 "$WORK/pin-from-lock.py" pin bun.lock "$stage"
   docker run --rm -u "$uid:$gid" -e HOME=/tmp -e npm_config_cache=/npm \
     -v "$CACHE":/npm -v "$stage":/app -w /app "$IMAGE" \
     npm install --omit=dev --ignore-scripts --no-audit --no-fund
+  python3 "$WORK/pin-from-lock.py" check bun.lock "$stage"
+  cp "packages/$pkg/package.json" "$stage/package.json"
 
   find "$stage/node_modules" -depth -type d \( -name test -o -name tests -o -name __tests__ -o -name __pycache__ -o -name .git \) -exec rm -rf {} +
   find "$stage/node_modules" -type f \( -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.mts' -o -name '*.cts' -o -name '.env' -o -name '.env.*' \) -delete
