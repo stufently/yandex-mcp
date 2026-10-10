@@ -27,24 +27,13 @@ Built for Russian and CIS market analysis -- keyword research, search analytics,
 
 ## Install
 
-### Quick start — `npx`
-
-One path for every client: each server is an npm package with a `bin`, so `npx` fetches and
-starts it. **Node.js >= 22** is the only prerequisite — no clone, no Bun, no build step.
-
-> **Status.** v2.2.0 is tagged, and the npm upload is a separate manual step. If
-> `npm view @stufently/yandex-webmaster-mcp version` still answers `E404`, the packages are
-> not on the registry yet: use the [plugin or a clone](#other-ways-to-install) until it prints a
-> version. Every block below then works unchanged once you swap the `npx` command for `node` —
-> see [From source](#from-source).
-
-Add a server to Claude Code with one command (Webmaster shown; tokens are placeholders):
+Paste this into a terminal. It starts the Webmaster server on stdin; the same `npx` command is what every client block below runs.
 
 ```bash
-claude mcp add yandex-webmaster --scope user \
-  --env YANDEX_WEBMASTER_TOKEN=your-oauth-token \
-  -- npx -y @stufently/yandex-webmaster-mcp
+YANDEX_WEBMASTER_TOKEN=your-oauth-token npx -y @stufently/yandex-webmaster-mcp
 ```
+
+**Node.js >= 22** is the only prerequisite — no clone, no Bun, no build step. Swap the package and the variables for another server:
 
 | Server | Command | Variables it needs |
 |---|---|---|
@@ -53,6 +42,12 @@ claude mcp add yandex-webmaster --scope user \
 | Webmaster | `npx -y @stufently/yandex-webmaster-mcp` | `YANDEX_WEBMASTER_TOKEN` |
 | Metrika | `npx -y @stufently/yandex-metrika-mcp` | `YANDEX_METRIKA_TOKEN` |
 | Direct | `npx -y @stufently/yandex-direct-mcp` | `YANDEX_DIRECT_TOKEN` (+ optional `YANDEX_DIRECT_CLIENT_LOGIN`, `YANDEX_DIRECT_SANDBOX`) |
+
+> **Status.** v2.2.0 is tagged, and the npm upload is a separate manual step. If
+> `npm view @stufently/yandex-webmaster-mcp version` still answers `E404`, the packages are
+> not on the registry yet: use a [`.mcpb` bundle](#claude-desktop), the [plugin, or a clone](#other-ways-to-install)
+> until it prints a version. Every block below then works unchanged once you swap the `npx` command for `node` —
+> see [From source](#from-source).
 
 Wordstat, Webmaster, Metrika and Direct start without their variables and fail only on the
 first tool call. **Search refuses to start** without `YANDEX_SEARCH_API_KEY` and
@@ -68,41 +63,12 @@ above).
 ## Client Configuration
 
 Every block registers all five servers; drop the ones you do not need. Values are placeholders —
-see [Environment Variables](#environment-variables) for where each one comes from.
+see [Environment Variables](#environment-variables) for where each one comes from. `command` is
+the same `npx` as in the terminal snippet above.
 
 ### Claude Code
 
-```bash
-claude mcp add yandex-search --scope user \
-  --env YANDEX_SEARCH_API_KEY=your-cloud-api-key --env YANDEX_FOLDER_ID=your-folder-id \
-  -- npx -y @stufently/yandex-search-mcp
-claude mcp add yandex-wordstat --scope user \
-  --env WORDSTAT_API_KEY=your-cloud-api-key --env WORDSTAT_FOLDER_ID=your-folder-id \
-  -- npx -y @stufently/yandex-wordstat-mcp
-claude mcp add yandex-webmaster --scope user \
-  --env YANDEX_WEBMASTER_TOKEN=your-oauth-token \
-  -- npx -y @stufently/yandex-webmaster-mcp
-claude mcp add yandex-metrika --scope user \
-  --env YANDEX_METRIKA_TOKEN=your-oauth-token \
-  -- npx -y @stufently/yandex-metrika-mcp
-claude mcp add yandex-direct --scope user \
-  --env YANDEX_DIRECT_TOKEN=your-oauth-token \
-  -- npx -y @stufently/yandex-direct-mcp
-```
-
-Check with `claude mcp list`. The [plugin](#claude-code-plugin) does the same in two commands
-and also installs the bundled skills.
-
-### Claude Desktop, Cursor, Windsurf
-
-The same `mcpServers` block, in a different file per client:
-
-| Client | File |
-|---|---|
-| Claude Desktop | macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json`, Linux `~/.config/Claude/claude_desktop_config.json` |
-| Cursor | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (one project) |
-| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
-| Cline and other stdio clients | the client's MCP settings file — same `command` / `args` / `env` |
+Project file: `.mcp.json` in the project root (Claude Code also reads a user-level config; this block is the project file).
 
 ```json
 {
@@ -138,6 +104,7 @@ The same `mcpServers` block, in a different file per client:
       "args": ["-y", "@stufently/yandex-direct-mcp"],
       "env": {
         "YANDEX_DIRECT_TOKEN": "your-oauth-token",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "",
         "YANDEX_DIRECT_SANDBOX": "true"
       }
     }
@@ -145,12 +112,177 @@ The same `mcpServers` block, in a different file per client:
 }
 ```
 
-`YANDEX_DIRECT_SANDBOX: "true"` points Direct at the sandbox; remove it to work with real
-campaigns. Restart the client after editing the file.
+Or from the terminal, one server at a time:
+
+```bash
+claude mcp add yandex-search --scope user \
+  --env YANDEX_SEARCH_API_KEY=your-cloud-api-key --env YANDEX_FOLDER_ID=your-folder-id \
+  -- npx -y @stufently/yandex-search-mcp
+claude mcp add yandex-wordstat --scope user \
+  --env WORDSTAT_API_KEY=your-cloud-api-key --env WORDSTAT_FOLDER_ID=your-folder-id \
+  -- npx -y @stufently/yandex-wordstat-mcp
+claude mcp add yandex-webmaster --scope user \
+  --env YANDEX_WEBMASTER_TOKEN=your-oauth-token \
+  -- npx -y @stufently/yandex-webmaster-mcp
+claude mcp add yandex-metrika --scope user \
+  --env YANDEX_METRIKA_TOKEN=your-oauth-token \
+  -- npx -y @stufently/yandex-metrika-mcp
+claude mcp add yandex-direct --scope user \
+  --env YANDEX_DIRECT_TOKEN=your-oauth-token \
+  -- npx -y @stufently/yandex-direct-mcp
+```
+
+Check with `claude mcp list`. The [plugin](#claude-code-plugin) does the same in two commands
+and also installs the bundled skills.
+
+### Claude Desktop
+
+File: `claude_desktop_config.json` — macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json`, Linux `~/.config/Claude/claude_desktop_config.json`.
+
+```json
+{
+  "mcpServers": {
+    "yandex-search": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-search-mcp"],
+      "env": {
+        "YANDEX_SEARCH_API_KEY": "your-cloud-api-key",
+        "YANDEX_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-wordstat": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-wordstat-mcp"],
+      "env": {
+        "WORDSTAT_API_KEY": "your-cloud-api-key",
+        "WORDSTAT_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-webmaster": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-webmaster-mcp"],
+      "env": { "YANDEX_WEBMASTER_TOKEN": "your-oauth-token" }
+    },
+    "yandex-metrika": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-metrika-mcp"],
+      "env": { "YANDEX_METRIKA_TOKEN": "your-oauth-token" }
+    },
+    "yandex-direct": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-direct-mcp"],
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "your-oauth-token",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "",
+        "YANDEX_DIRECT_SANDBOX": "true"
+      }
+    }
+  }
+}
+```
+
+One click, without editing JSON: download the `.mcpb` file for the server you want from
+https://github.com/stufently/yandex-mcp/releases/latest and open it. Claude Desktop installs
+the extension and asks for the token. Each server is its own file (`yandex-search-mcp`,
+`yandex-wordstat-mcp`, `yandex-webmaster-mcp`, `yandex-metrika-mcp`, `yandex-direct-mcp`).
+That path works before the npm packages are published. `YANDEX_DIRECT_SANDBOX` set to `true`
+points Direct at the sandbox; leave it false for real campaigns. Restart the app after a manual edit.
+
+### Cursor
+
+File: `~/.cursor/mcp.json` (all projects) or `.cursor/mcp.json` (one project).
+
+```json
+{
+  "mcpServers": {
+    "yandex-search": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-search-mcp"],
+      "env": {
+        "YANDEX_SEARCH_API_KEY": "your-cloud-api-key",
+        "YANDEX_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-wordstat": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-wordstat-mcp"],
+      "env": {
+        "WORDSTAT_API_KEY": "your-cloud-api-key",
+        "WORDSTAT_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-webmaster": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-webmaster-mcp"],
+      "env": { "YANDEX_WEBMASTER_TOKEN": "your-oauth-token" }
+    },
+    "yandex-metrika": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-metrika-mcp"],
+      "env": { "YANDEX_METRIKA_TOKEN": "your-oauth-token" }
+    },
+    "yandex-direct": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-direct-mcp"],
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "your-oauth-token",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "",
+        "YANDEX_DIRECT_SANDBOX": "true"
+      }
+    }
+  }
+}
+```
+
+### Windsurf
+
+File: `mcp_config.json` — macOS and Linux `~/.config/devin/mcp_config.json` (or `$XDG_CONFIG_HOME/devin/mcp_config.json`), Windows `%APPDATA%\devin\mcp_config.json`. Older builds used `~/.codeium/windsurf/mcp_config.json`; that path is not in the current docs.
+
+```json
+{
+  "mcpServers": {
+    "yandex-search": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-search-mcp"],
+      "env": {
+        "YANDEX_SEARCH_API_KEY": "your-cloud-api-key",
+        "YANDEX_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-wordstat": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-wordstat-mcp"],
+      "env": {
+        "WORDSTAT_API_KEY": "your-cloud-api-key",
+        "WORDSTAT_FOLDER_ID": "your-folder-id"
+      }
+    },
+    "yandex-webmaster": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-webmaster-mcp"],
+      "env": { "YANDEX_WEBMASTER_TOKEN": "your-oauth-token" }
+    },
+    "yandex-metrika": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-metrika-mcp"],
+      "env": { "YANDEX_METRIKA_TOKEN": "your-oauth-token" }
+    },
+    "yandex-direct": {
+      "command": "npx",
+      "args": ["-y", "@stufently/yandex-direct-mcp"],
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "your-oauth-token",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "",
+        "YANDEX_DIRECT_SANDBOX": "true"
+      }
+    }
+  }
+}
+```
 
 ### Zed
 
-In `settings.json` (`zed: open settings file`), under `context_servers`:
+File: `settings.json` (command palette: `zed: open settings file`). The key is `context_servers`, not `mcpServers`.
 
 ```json
 {
@@ -184,7 +316,11 @@ In `settings.json` (`zed: open settings file`), under `context_servers`:
     "yandex-direct": {
       "command": "npx",
       "args": ["-y", "@stufently/yandex-direct-mcp"],
-      "env": { "YANDEX_DIRECT_TOKEN": "your-oauth-token" }
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "your-oauth-token",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "",
+        "YANDEX_DIRECT_SANDBOX": "true"
+      }
     }
   }
 }
@@ -362,6 +498,13 @@ cp .env.example .env
 
 You only need the variables for the servers you actually enable — each server reads its own
 and ignores the rest.
+
+## Example prompts
+
+- Why did my site lose clicks last week?
+- Which search phrases send the most visits to example.com?
+- How many people search for this phrase on Yandex each month, and is that demand growing?
+- Pause the Direct campaign that spent the most yesterday, then show me its new state.
 
 ## Common Prompts
 

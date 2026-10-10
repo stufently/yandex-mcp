@@ -1,0 +1,235 @@
+{
+  "manifest_version": "0.3",
+  "name": "yandex-direct-mcp",
+  "display_name": "Yandex Direct",
+  "description": "Read and manage Yandex Direct campaigns, ads, and bids.",
+  "long_description": "Lists campaigns, ads, keywords, bids, and reports, and can add or pause them. Updates, deletes, and bid changes are irreversible, spend money where noted, and ask for confirmation. To run it you need an OAuth token. Leave client login empty unless this token is an agency acting for a client. Sandbox defaults to off; turn it on to hit the Direct sandbox instead of production.",
+  "author": {
+    "name": "stufently"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stufently/yandex-mcp"
+  },
+  "homepage": "https://github.com/stufently/yandex-mcp",
+  "support": "https://github.com/stufently/yandex-mcp/issues",
+  "license": "MIT",
+  "keywords": ["yandex", "direct", "ads", "mcp"],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "src/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/src/index.mjs"],
+      "env": {
+        "YANDEX_DIRECT_TOKEN": "${user_config.token}",
+        "YANDEX_DIRECT_CLIENT_LOGIN": "${user_config.client_login}",
+        "YANDEX_DIRECT_SANDBOX": "${user_config.sandbox}"
+      }
+    }
+  },
+  "user_config": {
+    "token": {
+      "type": "string",
+      "title": "Direct OAuth token",
+      "description": "OAuth token for Yandex Direct API v5.",
+      "sensitive": true,
+      "required": true
+    },
+    "client_login": {
+      "type": "string",
+      "title": "Client login",
+      "description": "Agency client login. Leave empty to act as the token owner.",
+      "default": "",
+      "required": false
+    },
+    "sandbox": {
+      "type": "boolean",
+      "title": "Sandbox",
+      "description": "Send requests to the Yandex Direct sandbox instead of production.",
+      "default": false,
+      "required": false
+    }
+  },
+  "privacy_policies": ["https://yandex.com/legal/confidential/"],
+  "tools": [
+    {
+      "name": "get_campaigns",
+      "description": "Get campaigns. Common FieldNames: Id, Name, Status, State, Type, StartDate, EndDate, DailyBudget, Statistics, ClientInfo, TimeTargeting, NegativeKeywords, BlockedIps, StatusPayment, StatusClarification, SourceId, Currency, Funds, RepresentedBy. Use when the user wants to see Direct campaigns, their states, types, or budgets before changing anything. Do not use it to edit a campaign; call update_campaigns. Do not use it to pause one; call suspend_campaigns."
+    },
+    {
+      "name": "add_campaigns",
+      "description": "Add new campaigns. Pass a JSON array of campaign objects. Each must include Name and a campaign-type-specific settings object (e.g. TextCampaign, DynamicTextCampaign). Use when the user asks to create new campaigns. Do not use it to change an existing campaign; call update_campaigns, which overwrites values and requires confirm. Do not use it to list campaigns; call get_campaigns."
+    },
+    {
+      "name": "update_campaigns",
+      "description": "Update existing campaigns. Pass a JSON array of campaign objects with Id and fields to update. IRREVERSIBLE: the previous values of the updated campaigns are overwritten and cannot be read back from the API afterwards. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to overwrite campaign fields and accepts that the previous values are lost. Do not use it to pause delivery; call suspend_campaigns. Do not use it to inspect campaigns; call get_campaigns."
+    },
+    {
+      "name": "delete_campaigns",
+      "description": "Delete campaigns by IDs. IRREVERSIBLE: campaigns and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete campaigns and accepts that they cannot be restored. Do not use it to pause them; call suspend_campaigns. Do not use it to archive them; call archive_campaigns, which can be undone with unarchive_campaigns."
+    },
+    {
+      "name": "archive_campaigns",
+      "description": "Archive campaigns by IDs. Use when the user wants campaigns archived and still restorable. Do not use it to delete them forever; call delete_campaigns. Do not use it to bring archived campaigns back; call unarchive_campaigns."
+    },
+    {
+      "name": "unarchive_campaigns",
+      "description": "Unarchive campaigns by IDs. Use when the user wants archived campaigns returned to a workable state. Do not use it to archive them; call archive_campaigns. Do not use it to delete them; call delete_campaigns."
+    },
+    {
+      "name": "suspend_campaigns",
+      "description": "Suspend (pause) campaigns by IDs. Use when the user wants to pause campaign delivery without deleting anything. Do not use it to resume delivery; call resume_campaigns. Do not use it to delete campaigns; call delete_campaigns."
+    },
+    {
+      "name": "resume_campaigns",
+      "description": "Resume campaigns by IDs. Use when the user wants suspended campaigns to deliver again. Do not use it to pause them; call suspend_campaigns. Do not use it to change bids; call set_keyword_bids only after the user accepts the spend."
+    },
+    {
+      "name": "get_adgroups",
+      "description": "Get ad groups. Common FieldNames: Id, Name, CampaignId, Status, Type, RegionIds, NegativeKeywords, TrackingParams, ServingStatuses, Subtype. Use when the user wants to list ad groups and their regions or statuses. Do not use it to change an ad group; call update_adgroups. Do not use it for the ads inside a group; call get_ads."
+    },
+    {
+      "name": "add_adgroups",
+      "description": "Add new ad groups. Each must include Name, CampaignId, RegionIds, and optionally type-specific settings. Use when the user asks to create ad groups inside a campaign. Do not use it to edit an existing group; call update_adgroups. Do not use it to list groups; call get_adgroups."
+    },
+    {
+      "name": "update_adgroups",
+      "description": "Update existing ad groups. Pass a JSON array with Id and fields to update. IRREVERSIBLE: the previous values of the updated ad groups are overwritten and cannot be read back from the API afterwards. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to overwrite ad group fields. Do not use it to archive a group; call archive_adgroups. Do not use it to read groups; call get_adgroups."
+    },
+    {
+      "name": "delete_adgroups",
+      "description": "Delete ad groups by IDs. IRREVERSIBLE: ad groups and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete ad groups and their stats. Do not use it to archive them; call archive_adgroups. Do not use it to delete only the ads; call delete_ads."
+    },
+    {
+      "name": "archive_adgroups",
+      "description": "Archive ad groups by IDs. Use when the user wants ad groups archived and still restorable. Do not use it to delete them; call delete_adgroups. Do not use it to restore them; call unarchive_adgroups."
+    },
+    {
+      "name": "unarchive_adgroups",
+      "description": "Unarchive ad groups by IDs. Use when the user wants archived ad groups restored. Do not use it to archive them; call archive_adgroups. Do not use it to delete them; call delete_adgroups."
+    },
+    {
+      "name": "get_ads",
+      "description": "Get ads. Common FieldNames: Id, AdGroupId, CampaignId, Status, State, Type, StatusClarification, TextAd, DynamicTextAd, MobileAppAd, CpmBannerAdBuilderAd, SmartAdBuilderAd. Use TextAd field to get ad texts. Use when the user wants to read ads, their texts, and moderation status. Do not use it to change an ad; call update_ads. Do not use it to send ads to moderation; call moderate_ads."
+    },
+    {
+      "name": "add_ads",
+      "description": "Add new ads. Each must include AdGroupId and an ad-type-specific object (TextAd, DynamicTextAd, etc.). Use when the user asks to create ads in an ad group. Do not use it to rewrite an existing ad; call update_ads. Do not use it to list ads; call get_ads."
+    },
+    {
+      "name": "update_ads",
+      "description": "Update existing ads. Pass a JSON array with Id and fields to update. IRREVERSIBLE: the previous values of the updated ads are overwritten and cannot be read back from the API afterwards. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to overwrite ad text or links. Do not use it to send ads to moderation; call moderate_ads. Do not use it to read ads; call get_ads."
+    },
+    {
+      "name": "delete_ads",
+      "description": "Delete ads by IDs. IRREVERSIBLE: ads and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete ads. Do not use it to archive them; call archive_ads. Do not use it to delete the whole ad group; call delete_adgroups."
+    },
+    {
+      "name": "archive_ads",
+      "description": "Archive ads by IDs. Use when the user wants ads archived and still restorable. Do not use it to delete them; call delete_ads. Do not use it to restore them; call unarchive_ads."
+    },
+    {
+      "name": "unarchive_ads",
+      "description": "Unarchive ads by IDs. Use when the user wants archived ads restored. Do not use it to archive them; call archive_ads. Do not use it to delete them; call delete_ads."
+    },
+    {
+      "name": "moderate_ads",
+      "description": "Send ads for moderation by IDs. Use when the user wants existing ads submitted for moderation. Do not use it to rewrite the ad; call update_ads. Do not use it to read the current moderation status; call get_ads."
+    },
+    {
+      "name": "get_keywords",
+      "description": "Get keywords. Common FieldNames: Id, Keyword, AdGroupId, CampaignId, Status, State, Bid, ContextBid, StrategyPriority, UserParam1, UserParam2, Productivity, StatisticsSearch, StatisticsNetwork. Use when the user wants keyword texts, states, and which ad group they belong to. Do not use it for the money bid on a keyword; call get_keyword_bids. Do not use it to add keywords; call add_keywords."
+    },
+    {
+      "name": "add_keywords",
+      "description": "Add new keywords. Each must include Keyword text and AdGroupId. Use when the user asks to add keyword phrases to an ad group. Do not use it to change an existing phrase; call update_keywords. Do not use it to set the bid; call set_keyword_bids only when the user accepts the spend."
+    },
+    {
+      "name": "update_keywords",
+      "description": "Update existing keywords. Pass a JSON array with Id and fields to update. IRREVERSIBLE: the previous values of the updated keywords are overwritten and cannot be read back from the API afterwards. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to overwrite keyword fields. Do not use it to pause a keyword; call suspend_keywords. Do not use it to read keywords; call get_keywords."
+    },
+    {
+      "name": "delete_keywords",
+      "description": "Delete keywords by IDs. IRREVERSIBLE: keywords and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete keywords. Do not use it to pause them; call suspend_keywords. Do not use it to change bids; call set_keyword_bids."
+    },
+    {
+      "name": "suspend_keywords",
+      "description": "Suspend keywords by IDs. Use when the user wants to stop keywords from matching without deleting them. Do not use it to turn them back on; call resume_keywords. Do not use it to delete them; call delete_keywords."
+    },
+    {
+      "name": "resume_keywords",
+      "description": "Resume keywords by IDs. Use when the user wants suspended keywords to match again. Do not use it to pause them; call suspend_keywords. Do not use it to change what they cost; call set_keyword_bids."
+    },
+    {
+      "name": "get_keyword_bids",
+      "description": "Get keyword bids. Common FieldNames: KeywordId, AdGroupId, CampaignId, Bid, ContextBid, CurrentSearchPrice, MinSearchPrice, StrategyPriority. Use when the user wants the current search or network bid for keywords. Do not use it to change a bid; call set_keyword_bids, which spends money and requires confirm. Do not use it for bid modifiers; call get_bid_modifiers."
+    },
+    {
+      "name": "set_keyword_bids",
+      "description": "Set keyword bids. Pass a JSON array of bid objects with KeywordId, SearchBid (in micros), and/or NetworkBid (in micros). SPENDS MONEY and is IRREVERSIBLE: bids decide the cost per click, the previous bid is overwritten and cannot be read back from the API. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to set keyword bids and accepts that the account will spend money. Do not use it to read the current bid; call get_keyword_bids. Do not use it for automatic strategy settings; call set_auto_keyword_bids."
+    },
+    {
+      "name": "set_auto_keyword_bids",
+      "description": "Set automatic keyword bids (strategy-level). Pass a JSON array of auto-bid objects. Common fields: CampaignId, AdGroupId, KeywordId, Bid, ContextBid, and strategy parameters. SPENDS MONEY and is IRREVERSIBLE: these settings drive automatic bidding, the previous settings are overwritten and cannot be read back from the API. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to change automatic bidding settings and accepts the spend. Do not use it for a manual search bid; call set_keyword_bids. Do not use it to read bids; call get_keyword_bids."
+    },
+    {
+      "name": "get_bid_modifiers",
+      "description": "Get bid modifiers. Common FieldNames: Id, CampaignId, AdGroupId, Type, Level, MobileAdjustment, DesktopAdjustment, DemographicsAdjustment, RetargetingAdjustment, RegionalAdjustment, VideoAdjustment, SmartAdAdjustment, IncomeGradeAdjustment. Use when the user wants the current bid adjustments for device, demographics, or region. Do not use it to change an adjustment; call set_bid_modifiers. Do not use it to add one; call add_bid_modifiers."
+    },
+    {
+      "name": "add_bid_modifiers",
+      "description": "Add bid modifiers. Each must include CampaignId or AdGroupId and an adjustment object. Use when the user asks to add a new bid adjustment. Do not use it to change an existing adjustment; call set_bid_modifiers, which spends money and requires confirm. Do not use it to list them; call get_bid_modifiers."
+    },
+    {
+      "name": "set_bid_modifiers",
+      "description": "Update bid modifier values. Pass a JSON array of objects with Id and the new adjustment value. SPENDS MONEY and is IRREVERSIBLE: modifiers multiply the bid actually paid, the previous values are overwritten and cannot be read back from the API. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to change bid adjustment values and accepts the spend. Do not use it to add a new adjustment; call add_bid_modifiers. Do not use it to read them; call get_bid_modifiers."
+    },
+    {
+      "name": "delete_bid_modifiers",
+      "description": "Delete bid modifiers by IDs. IRREVERSIBLE: bid modifiers and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete bid adjustments. Do not use it to change their values; call set_bid_modifiers. Do not use it to read them; call get_bid_modifiers."
+    },
+    {
+      "name": "get_sitelinks",
+      "description": "Get sitelink sets. Common FieldNames: Id, Sitelinks. Each Sitelinks contains an array of {Title, Href, Description}. Use when the user wants to read sitelink sets. Do not use it to create a set; call add_sitelinks. Do not use it to delete a set; call delete_sitelinks."
+    },
+    {
+      "name": "add_sitelinks",
+      "description": "Add sitelink sets. Each set contains a Sitelinks array of {Title, Href, Description} objects (2-8 sitelinks per set). Use when the user asks to create sitelink sets. Do not use it to delete a set; call delete_sitelinks. Do not use it to list sets; call get_sitelinks."
+    },
+    {
+      "name": "delete_sitelinks",
+      "description": "Delete sitelink sets by IDs. IRREVERSIBLE: sitelink sets and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete sitelink sets. Do not use it to create them; call add_sitelinks. Do not use it to read them; call get_sitelinks."
+    },
+    {
+      "name": "get_vcards",
+      "description": "Get VCards (business cards). Common FieldNames: Id, CampaignId, CompanyName, WorkTime, Phone, Street, Building, City, Country, Ogrn, InstantMessenger, ExtraMessage, ContactEmail, ContactPerson. Use when the user wants to read business cards attached to campaigns. Do not use it to create one; call add_vcards. Do not use it to delete one; call delete_vcards."
+    },
+    {
+      "name": "add_vcards",
+      "description": "Add VCards. Each must include CampaignId, Country, City, CompanyName, WorkTime, and Phone. Use when the user asks to add business cards. Do not use it to delete them; call delete_vcards. Do not use it to list them; call get_vcards."
+    },
+    {
+      "name": "delete_vcards",
+      "description": "Delete VCards by IDs. IRREVERSIBLE: VCards and the statistics attached to them are lost permanently — re-adding creates new entities with new IDs, not the old ones back. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to delete business cards. Do not use it to create them; call add_vcards. Do not use it to read them; call get_vcards."
+    },
+    {
+      "name": "create_report",
+      "description": "Create a Yandex Direct report. Supported ReportType: ACCOUNT_PERFORMANCE_REPORT, AD_PERFORMANCE_REPORT, ADGROUP_PERFORMANCE_REPORT, CAMPAIGN_PERFORMANCE_REPORT, CRITERIA_PERFORMANCE_REPORT, CUSTOM_REPORT, REACH_AND_FREQUENCY_PERFORMANCE_REPORT, SEARCH_QUERY_PERFORMANCE_REPORT. DateRangeType: TODAY, YESTERDAY, THIS_MONTH, LAST_MONTH, THIS_QUARTER, LAST_QUARTER, THIS_YEAR, LAST_YEAR, ALL_TIME, CUSTOM_DATE, LAST_3_DAYS, LAST_5_DAYS, LAST_7_DAYS, LAST_14_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_365_DAYS, AUTO. Result is returned as JSON array parsed from TSV (max 500 rows). Use when the user wants impressions, clicks, or cost for campaigns, ads, or queries over a date range. Do not use it to change a campaign or a bid; it only reads statistics. Do not use it to list campaigns; call get_campaigns."
+    },
+    {
+      "name": "get_dictionaries",
+      "description": "Get Yandex Direct dictionaries (reference data). Available dictionaries: Currencies, MetroStations, GeoRegions, TimeZones, Constants, Categories, OperationSystemVersions, InterestCategories, Interests, AudienceInterests. Use when the user needs reference ids such as regions, currencies, or time zones before building a campaign. Do not use it for account performance; call create_report. Do not use it for the client profile; call get_clients."
+    },
+    {
+      "name": "get_clients",
+      "description": "Get client info (for agency accounts). Common FieldNames: Login, ClientId, ClientInfo, AccountQuality, Archived, CountryId, CreatedAt, Currency, Grants, Notification, OverdraftSumAvailable, Phone, Representatives, Restrictions, Settings, Type. Use when the user is an agency and needs the client logins this token can act for. Do not use it to switch the client; set YANDEX_DIRECT_CLIENT_LOGIN. Do not use it to list campaigns; call get_campaigns."
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { EMPTY_RESULT_ERROR_CODES, parseError, parseFound, parseSearchResults } from './parse.mjs';
+import { applyToolSurface } from './tool-surface.mjs';
 
 await runServer();
 
@@ -189,6 +190,8 @@ async function runServer() {
       };
     },
   );
+
+  applyToolSurface(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

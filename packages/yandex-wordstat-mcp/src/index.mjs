@@ -7,6 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { alignDates, DAILY_MAX_AGE_DAYS } from './dates.mjs';
+import { applyToolSurface } from './tool-surface.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -444,6 +445,8 @@ async function runServer() {
       };
     },
   );
+
+  applyToolSurface(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

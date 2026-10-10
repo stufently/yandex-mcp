@@ -25,6 +25,7 @@ import {
 } from './format.mjs';
 import { annotateBrokenLinks, formatBrokenLinks } from './links.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
+import { applyToolSurface } from './tool-surface.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -1117,6 +1118,8 @@ async function runServer() {
       return undefined;
     }),
   );
+
+  applyToolSurface(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

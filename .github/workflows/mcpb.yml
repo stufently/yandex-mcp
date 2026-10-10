@@ -1,0 +1,42 @@
+name: MCPB release assets
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  mcpb:
+    name: Build and upload mcpb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build mcpb bundles
+        run: bash scripts/build-mcpb.sh
+
+      - name: Create the GitHub release when the tag has none
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release already exists"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --notes "Desktop Extension bundles (.mcpb) for ${GITHUB_REF_NAME}."
+          fi
+
+      - name: Upload mcpb bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(dist-mcpb/*.mcpb)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no .mcpb files in dist-mcpb/" >&2
+            exit 1
+          fi
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber

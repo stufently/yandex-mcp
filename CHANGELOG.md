@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-10 — Описания тулов, установка в клиенты и .mcpb
+
+### Added
+- У каждого из 94 тулов описание на английском: что делает тул, предложение `Use when` и, где рядом есть сосед, когда звать его. Аннотации у всех: читающие — `readOnlyHint: true` и `destructiveHint: false`, пишущие — `readOnlyHint: false` и явный `destructiveHint`; `openWorldHint: true`, потому что каждый тул ходит в API Яндекса. Имена тулов и `inputSchema` не менялись.
+- README: один copy-paste через `npx` и отдельный JSON-блок для Claude Code (`.mcp.json`), Claude Desktop, Cursor, Windsurf и Zed. Под Claude Desktop — установка одним кликом: скачать `.mcpb` с `https://github.com/stufently/yandex-mcp/releases/latest`. Раздел `Example prompts` — запросы пользователя, остальные примеры остались в `Common Prompts`.
+- Исходники Desktop Extension в `mcpb/<пакет>/manifest.json`. `scripts/build-mcpb.sh` собирает пять бандлов `dist-mcpb/yandex-*-mcp-<версия>.mcpb` (Node, `manifest_version` 0.3) и ничего не ставит на хост. `.github/workflows/mcpb.yml` на теге `v*.*.*` создаёт релиз, если его нет, и прикладывает бандлы. В npm, PyPI, GHCR и MCP Registry эта веха ничего не публикует.
+
 ## 2026-10-10 — Вебмастер: текст get-diagnostics без обрезки
 
 ### Fixed

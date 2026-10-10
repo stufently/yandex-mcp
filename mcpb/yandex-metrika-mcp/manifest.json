@@ -1,0 +1,95 @@
+{
+  "manifest_version": "0.3",
+  "name": "yandex-metrika-mcp",
+  "display_name": "Yandex Metrika",
+  "description": "Yandex Metrika counters and traffic reports.",
+  "long_description": "Lists counters and reports visits, sources, geography, devices, pages, and search phrases. Creating a counter needs a write-capable token. Deleting a counter is irreversible and asks for confirmation. To run it you need an OAuth token for Yandex Metrika.",
+  "author": {
+    "name": "stufently"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stufently/yandex-mcp"
+  },
+  "homepage": "https://github.com/stufently/yandex-mcp",
+  "support": "https://github.com/stufently/yandex-mcp/issues",
+  "license": "MIT",
+  "keywords": ["yandex", "metrika", "analytics", "mcp"],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "src/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/src/index.mjs"],
+      "env": {
+        "YANDEX_METRIKA_TOKEN": "${user_config.token}"
+      }
+    }
+  },
+  "user_config": {
+    "token": {
+      "type": "string",
+      "title": "Metrika OAuth token",
+      "description": "OAuth token for the Yandex Metrika API. Write tools also need the metrika:write scope.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "privacy_policies": ["https://yandex.com/legal/confidential/"],
+  "tools": [
+    {
+      "name": "get-counters",
+      "description": "List all Metrika counters (sites). Use when the user wants the list of Metrika counters and their ids before any report. Do not use it for visits or traffic; call get-traffic-summary or another report tool once a counter id is known."
+    },
+    {
+      "name": "get-counter",
+      "description": "Get details for a specific Metrika counter. Use when the user asks for the settings of one known Metrika counter, such as its name, site, or status. Do not use it to list every counter; call get-counters. Do not use it for visit numbers; call a report tool."
+    },
+    {
+      "name": "get-goals",
+      "description": "Get goals for a Metrika counter. Use when the user asks which conversion goals exist on a counter. Do not use it for visit totals; call get-traffic-summary. Do not use it to create a counter; call create-counter."
+    },
+    {
+      "name": "create-counter",
+      "description": "Create a new Metrika counter (add a site). Requires an OAuth token with the `metrika:write` scope; a read-only token fails with 403. Use when the user asks to add a new site to Metrika and a write-capable token is available. Do not use it to remove a counter; call delete-counter, which is irreversible and requires confirm. Do not use it to read an existing counter; call get-counter."
+    },
+    {
+      "name": "delete-counter",
+      "description": "Delete a Metrika counter. IRREVERSIBLE: the counter and all its collected statistics are lost permanently. Requires `confirm: true` — without it the tool refuses and calls nothing. Also requires an OAuth token with the `metrika:write` scope; a read-only token fails with 403. Use when the user has explicitly asked to delete one Metrika counter and accepts that its statistics are lost. Do not use it to create a site; call create-counter. Do not use it to inspect a counter; call get-counter."
+    },
+    {
+      "name": "get-traffic-summary",
+      "description": "Get traffic summary: visits, users, pageviews, bounce rate, avg duration. Use when the user wants visits, users, pageviews, bounce rate, or average duration for a counter over a date range. Do not use it for a breakdown by source, city, or page; call get-traffic-sources, get-geography, or get-popular-pages."
+    },
+    {
+      "name": "get-traffic-sources",
+      "description": "Get traffic breakdown by source. Use when the user asks where visits came from, such as organic search, ads, or direct. Do not use it for the headline totals only; call get-traffic-summary. Do not use it for landing pages; call get-popular-pages."
+    },
+    {
+      "name": "get-geography",
+      "description": "Get traffic breakdown by country and city. Use when the user asks which countries or cities the visitors come from. Do not use it for devices or browsers; call get-devices. Do not use it for traffic sources; call get-traffic-sources."
+    },
+    {
+      "name": "get-devices",
+      "description": "Get traffic breakdown by device, browser, or OS. Use when the user asks for a breakdown by device, browser, or operating system. Do not use it for countries and cities; call get-geography. Do not use it for the headline visit total; call get-traffic-summary."
+    },
+    {
+      "name": "get-popular-pages",
+      "description": "Get most visited pages. Use when the user asks which pages got the most pageviews. Do not use it for the queries that brought people in; call get-search-phrases. Do not use it for an arbitrary metric; call get-report."
+    },
+    {
+      "name": "get-search-phrases",
+      "description": "Get top search phrases driving traffic. Use when the user asks which search phrases sent visits to the site. Do not use it for Yandex-wide keyword volume outside this counter; that is Wordstat, not this server. Do not use it for pageview leaders; call get-popular-pages."
+    },
+    {
+      "name": "get-report",
+      "description": "Run a custom Metrika report with arbitrary metrics and dimensions. Use when the user needs a custom Metrika table with chosen metrics and dimensions that no dedicated tool covers. Do not use it for the standard visit summary; call get-traffic-summary. Do not use it to change the counter; this tool only reads."
+    }
+  ]
+}

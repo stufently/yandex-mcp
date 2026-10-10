@@ -1,0 +1,58 @@
+{
+  "manifest_version": "0.3",
+  "name": "yandex-search-mcp",
+  "display_name": "Yandex Search",
+  "description": "Search the web with the Yandex Search API.",
+  "long_description": "Returns ranked Yandex web results with titles, snippets, and URLs. Read-only. To run it you need a Yandex Cloud API key and a folder id; the server refuses to start without both.",
+  "author": {
+    "name": "stufently"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stufently/yandex-mcp"
+  },
+  "homepage": "https://github.com/stufently/yandex-mcp",
+  "support": "https://github.com/stufently/yandex-mcp/issues",
+  "license": "MIT",
+  "keywords": ["yandex", "search", "mcp", "seo"],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "src/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/src/index.mjs"],
+      "env": {
+        "YANDEX_SEARCH_API_KEY": "${user_config.api_key}",
+        "YANDEX_FOLDER_ID": "${user_config.folder_id}"
+      }
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "Search API key",
+      "description": "Yandex Cloud API key for Search API v2.",
+      "sensitive": true,
+      "required": true
+    },
+    "folder_id": {
+      "type": "string",
+      "title": "Folder ID",
+      "description": "Yandex Cloud folder id that owns the Search API key.",
+      "required": true
+    }
+  },
+  "privacy_policies": ["https://yandex.com/legal/confidential/"],
+  "tools": [
+    {
+      "name": "search",
+      "description": "Search the web using Yandex Search API. Returns ranked results with titles, snippets, and URLs. Use when the user wants web pages from Yandex for a query, with titles, snippets, URLs, a region, or a safe-search filter. Do not use it for how often people search a phrase; this server has no keyword-volume tool."
+    }
+  ]
+}
