@@ -15,7 +15,14 @@ import {
   formatReturnedToSearch,
   selectExcludedPages,
 } from './exclusions.mjs';
-import { formatHostList, formatRecrawlQuota, formatSitemap, formatSummary, orNA } from './format.mjs';
+import {
+  formatDiagnostics,
+  formatHostList,
+  formatRecrawlQuota,
+  formatSitemap,
+  formatSummary,
+  orNA,
+} from './format.mjs';
 import { annotateBrokenLinks, formatBrokenLinks } from './links.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 
@@ -302,16 +309,14 @@ async function runServer() {
   // 6. get-diagnostics
   server.tool(
     'get-diagnostics',
-    'Get site diagnostics and problems.',
+    'Get site diagnostics. Text lists problems in state PRESENT (code, severity, date); full response is in structuredContent.',
     {
       host_id: z.string().describe('Host ID'),
     },
     async ({ host_id }) => {
       const data = await apiRequest(await hostUrl(host_id, '/diagnostics'));
       return {
-        content: [
-          { type: 'text', text: `Diagnostics for host: ${JSON.stringify(data.problems || {}).substring(0, 500)}` },
-        ],
+        content: [{ type: 'text', text: formatDiagnostics(data) }],
         structuredContent: data,
       };
     },

@@ -95,3 +95,103 @@ export function formatRecrawlQuota(data) {
   const exhausted = quota.quota_remainder === 0 ? ' Quota is exhausted — add-recrawl-url will fail today.' : '';
   return `Recrawl quota: ${orNA(quota.daily_quota)} daily, ${orNA(quota.quota_remainder)} remaining.${exhausted}`;
 }
+
+/** Сколько PRESENT-записей печатать целиком. Дальше — строка «ещё N», не срез по символам. */
+const DIAGNOSTICS_PRESENT_LIMIT = 50;
+
+const DIAGNOSTICS_SEVERITIES = ['FATAL', 'CRITICAL', 'POSSIBLE_PROBLEM', 'RECOMMENDATION'];
+
+const DIAGNOSTICS_DAY = /^\d{4}-\d{2}-\d{2}/;
+
+/**
+ * Текст `get-diagnostics`: все проблемы в состоянии PRESENT.
+ *
+ * Обрезка `JSON.stringify(problems).substring(0, 500)` прятала PRESENT-проблемы:
+ * в ответе `/diagnostics` десятки записей, почти все ABSENT, JSON около 3 КБ, и
+ * запись вроде `NOT_MOBILE_FRIENDLY` стояла дальше 500-го символа. Модель, которая
+ * читает текст, видела «проблем нет», хотя в `structuredContent` проблема была.
+ * Лимит здесь только по целым записям (`DIAGNOSTICS_PRESENT_LIMIT`).
+ *
+ * @param {unknown} data ответ `/diagnostics`
+ * @returns {string}
+ */
+export function formatDiagnostics(data) {
+  const problems = diagnosticsProblems(data);
+  const entries = problems ? Object.entries(problems) : [];
+  if (entries.length === 0) return 'Diagnostics: no data (response has no problems).';
+
+  const present = [];
+  const severityCounts = { FATAL: 0, CRITICAL: 0, POSSIBLE_PROBLEM: 0, RECOMMENDATION: 0 };
+  const otherCounts = new Map();
+  for (const [code, raw] of entries) {
+    const entry = raw && typeof raw === 'object' ? raw : {};
+    if (entry.state === 'PRESENT') {
+      present.push({ code, severity: entry.severity, updated: entry.last_state_update });
+      const rank = DIAGNOSTICS_SEVERITIES.indexOf(entry.severity);
+      if (rank !== -1) severityCounts[entry.severity] += 1;
+    } else {
+      const state = orNA(entry.state);
+      otherCounts.set(state, (otherCounts.get(state) ?? 0) + 1);
+    }
+  }
+
+  present.sort((left, right) => {
+    const bySeverity = severityRank(left.severity) - severityRank(right.severity);
+    if (bySeverity !== 0) return bySeverity;
+    if (left.code < right.code) return -1;
+    if (left.code > right.code) return 1;
+    return 0;
+  });
+
+  const lines = [
+    `Diagnostics: ${present.length} problems present of ${entries.length} checks ` +
+      `(FATAL=${severityCounts.FATAL}, CRITICAL=${severityCounts.CRITICAL}, ` +
+      `POSSIBLE_PROBLEM=${severityCounts.POSSIBLE_PROBLEM}, RECOMMENDATION=${severityCounts.RECOMMENDATION})`,
+  ];
+  const shown = present.slice(0, DIAGNOSTICS_PRESENT_LIMIT);
+  for (const item of shown) {
+    lines.push(`- ${item.code} [${orNA(item.severity)}] since ${diagnosticDay(item.updated)}`);
+  }
+  const hidden = present.length - shown.length;
+  if (hidden > 0) {
+    lines.push(`... and ${hidden} more present problems (full list in structuredContent)`);
+  }
+  if (otherCounts.size > 0) {
+    const states = [...otherCounts.keys()].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+    lines.push(`Other states: ${states.map((state) => `${state}=${otherCounts.get(state)}`).join(', ')}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Карта `problems`, если это объект-словарь. Массив и не-объект — не карта проверок.
+ *
+ * @param {unknown} data
+ * @returns {Record<string, unknown> | null}
+ */
+function diagnosticsProblems(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const problems = data.problems;
+  if (!problems || typeof problems !== 'object' || Array.isArray(problems)) return null;
+  return problems;
+}
+
+/**
+ * @param {unknown} severity
+ * @returns {number}
+ */
+function severityRank(severity) {
+  const index = DIAGNOSTICS_SEVERITIES.indexOf(severity);
+  return index === -1 ? DIAGNOSTICS_SEVERITIES.length : index;
+}
+
+/**
+ * Календарный день, если значение начинается с `YYYY-MM-DD`. Иначе — `orNA`.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
+function diagnosticDay(value) {
+  if (typeof value === 'string' && DIAGNOSTICS_DAY.test(value)) return value.slice(0, 10);
+  return orNA(value);
+}
