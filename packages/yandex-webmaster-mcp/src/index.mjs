@@ -25,7 +25,7 @@ import {
 } from './format.mjs';
 import { annotateBrokenLinks, formatBrokenLinks } from './links.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
-import { applyToolSurface } from './tool-surface.mjs';
+import { createToolRegistrar } from './tool-surface.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -187,6 +187,7 @@ async function runServer() {
   // --- MCP Server ---
 
   const server = new McpServer({ name: 'yandex-webmaster', version: '2.2.0' });
+  const registrar = createToolRegistrar(server);
 
   /**
    * Регистрация ПИШУЩЕГО, но аддитивного тула.
@@ -199,7 +200,7 @@ async function runServer() {
    * оно что-то значит.
    */
   function registerAdditiveWriteTool(name, { title, description, inputSchema }, handler) {
-    server.registerTool(
+    registrar.registerTool(
       name,
       {
         title,
@@ -220,7 +221,7 @@ async function runServer() {
   // === Core (3 tools) ===
 
   // 1. get-user
-  server.tool('get-user', 'Get current Webmaster user info and user_id.', {}, async () => {
+  registrar.tool('get-user', 'Get current Webmaster user info and user_id.', {}, async () => {
     const data = await apiRequest('/user');
     cachedUserId = data.user_id;
     return {
@@ -230,7 +231,7 @@ async function runServer() {
   });
 
   // 2. list-hosts
-  server.tool(
+  registrar.tool(
     'list-hosts',
     'List all hosts (sites) in Webmaster with their host_id — the identifier every other tool ' +
       'requires (format "https:example.com:443"). Take it from here instead of assembling it by hand.',
@@ -246,7 +247,7 @@ async function runServer() {
   );
 
   // 3. get-host
-  server.tool(
+  registrar.tool(
     'get-host',
     'Get details for a specific host.',
     {
@@ -269,7 +270,7 @@ async function runServer() {
   // === Statistics (2 tools) ===
 
   // 4. get-summary
-  server.tool(
+  registrar.tool(
     'get-summary',
     'Get site summary: SQI, pages count, problems.',
     {
@@ -285,7 +286,7 @@ async function runServer() {
   );
 
   // 5. get-sqi-history
-  server.tool(
+  registrar.tool(
     'get-sqi-history',
     'Get SQI (Site Quality Index) history over time.',
     {
@@ -308,7 +309,7 @@ async function runServer() {
   // === Diagnostics (1 tool) ===
 
   // 6. get-diagnostics
-  server.tool(
+  registrar.tool(
     'get-diagnostics',
     'Get site diagnostics. Text lists problems in state PRESENT (code, severity, date); full response is in structuredContent.',
     {
@@ -326,7 +327,7 @@ async function runServer() {
   // === Search Queries (2 tools) ===
 
   // 7. get-popular-queries
-  server.tool(
+  registrar.tool(
     'get-popular-queries',
     'Get popular search queries for a site.',
     {
@@ -376,7 +377,7 @@ async function runServer() {
   );
 
   // 8. get-query-history
-  server.tool(
+  registrar.tool(
     'get-query-history',
     'Get search query totals history.',
     {
@@ -403,7 +404,7 @@ async function runServer() {
   // === Indexing (4 tools) ===
 
   // 9. get-indexing-history
-  server.tool(
+  registrar.tool(
     'get-indexing-history',
     'Get indexing history over time.',
     {
@@ -422,7 +423,7 @@ async function runServer() {
   );
 
   // 10. get-indexing-samples
-  server.tool(
+  registrar.tool(
     'get-indexing-samples',
     'Get sample indexed URLs.',
     {
@@ -441,7 +442,7 @@ async function runServer() {
   );
 
   // 11. get-insearch-history
-  server.tool(
+  registrar.tool(
     'get-insearch-history',
     'Get in-search (appearing in results) history.',
     {
@@ -460,7 +461,7 @@ async function runServer() {
   );
 
   // 12. get-insearch-samples
-  server.tool(
+  registrar.tool(
     'get-insearch-samples',
     'Get sample URLs appearing in search.',
     {
@@ -484,7 +485,7 @@ async function runServer() {
   // === Search Events (2 tools) ===
 
   // 13. get-search-events-history
-  server.tool(
+  registrar.tool(
     'get-search-events-history',
     'Get search URL events history (appeared/removed).',
     {
@@ -503,7 +504,7 @@ async function runServer() {
   );
 
   // 14. get-search-events-samples
-  server.tool(
+  registrar.tool(
     'get-search-events-samples',
     'Get sample URLs for search events (appeared in / removed from search), with the reason each ' +
       'page was dropped (excluded_url_status). This is the only place API v4 exposes per-URL ' +
@@ -570,7 +571,7 @@ async function runServer() {
   // `/search-urls/events/samples`, и фильтра по типу события у него нет: `limit`/`offset`
   // листают СМЕШАННЫЙ поток появившихся и исключённых, `count` считает события обоих типов.
   // Поэтому «дай 20 исключённых» — это обход страниц с накоплением, а не один вызов.
-  server.tool(
+  registrar.tool(
     'get-excluded-pages',
     'Pages DROPPED FROM SEARCH inside a time window, with the reason for each one (url + ' +
       'excluded_url_status, plus bad_http_status for HTTP_ERROR and target_url for ' +
@@ -662,7 +663,7 @@ async function runServer() {
   // === Links (4 tools) ===
 
   // 15. get-external-links
-  server.tool(
+  registrar.tool(
     'get-external-links',
     'Get external links pointing to the site.',
     {
@@ -681,7 +682,7 @@ async function runServer() {
   );
 
   // 16. get-external-links-history
-  server.tool(
+  registrar.tool(
     'get-external-links-history',
     'Get external links count history.',
     {
@@ -700,7 +701,7 @@ async function runServer() {
   );
 
   // 17. get-broken-internal-links
-  server.tool(
+  registrar.tool(
     'get-broken-internal-links',
     'List broken internal links (destination URL, the source page linking to it, and when Yandex ' +
       'last checked the link). Records can be months old: `source_last_access_date` equal to ' +
@@ -726,7 +727,7 @@ async function runServer() {
   );
 
   // 18. get-broken-internal-links-history
-  server.tool(
+  registrar.tool(
     'get-broken-internal-links-history',
     'Get broken internal links count history.',
     {
@@ -747,7 +748,7 @@ async function runServer() {
   // === Sitemaps (4 tools) ===
 
   // 19. get-sitemaps
-  server.tool(
+  registrar.tool(
     'get-sitemaps',
     'List all sitemaps for a host.',
     {
@@ -767,7 +768,7 @@ async function runServer() {
   );
 
   // 20. get-sitemap
-  server.tool(
+  registrar.tool(
     'get-sitemap',
     'Get details for a specific sitemap.',
     {
@@ -790,7 +791,7 @@ async function runServer() {
   );
 
   // 21. get-user-sitemaps
-  server.tool(
+  registrar.tool(
     'get-user-sitemaps',
     'List user-added sitemaps.',
     {
@@ -842,7 +843,7 @@ async function runServer() {
   // === Important URLs (2 tools) ===
 
   // 22. get-important-urls
-  server.tool(
+  registrar.tool(
     'get-important-urls',
     'Get important URLs for a site.',
     {
@@ -861,7 +862,7 @@ async function runServer() {
   );
 
   // 23. get-important-url-history
-  server.tool(
+  registrar.tool(
     'get-important-url-history',
     'Get history for a specific important URL.',
     {
@@ -886,7 +887,7 @@ async function runServer() {
   // === Recrawl (1 tool) ===
 
   // 24. get-recrawl-quota
-  server.tool(
+  registrar.tool(
     'get-recrawl-quota',
     'Get recrawl quota for a host.',
     {
@@ -932,7 +933,7 @@ async function runServer() {
   );
 
   // 26. get-recrawl-queue
-  server.tool(
+  registrar.tool(
     'get-recrawl-queue',
     'List recrawl queue for a host (URLs submitted via add-recrawl-url with their state).',
     {
@@ -953,7 +954,7 @@ async function runServer() {
   );
 
   // 27. get-recrawl-task
-  server.tool(
+  registrar.tool(
     'get-recrawl-task',
     'Get state of a single recrawl task by task_id (returned by add-recrawl-url).',
     {
@@ -1003,7 +1004,7 @@ async function runServer() {
   );
 
   // verify-host
-  server.tool(
+  registrar.tool(
     'verify-host',
     'Get verification status and available verification methods for a host. Use after add-host to check what verification is needed.',
     {
@@ -1083,7 +1084,7 @@ async function runServer() {
   // `confirm` is optional in the schema on purpose — a missing confirmation must
   // come back as the explanatory refusal from `confirm.mjs`, not as a schema
   // validation error the model cannot act on.
-  server.registerTool(
+  registrar.registerTool(
     'delete-host',
     {
       description:
@@ -1119,7 +1120,7 @@ async function runServer() {
     }),
   );
 
-  applyToolSurface(server);
+  registrar.finish();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

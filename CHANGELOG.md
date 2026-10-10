@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-10 — Описания тулов через публичный API SDK
+
+### Fixed
+- Описания и annotations 94 тулов больше не дописываются в приватное поле SDK `server._registeredTools` после регистрации. Их собирает `createToolRegistrar(server)` в `packages/*/src/tool-surface.mjs` и передаёт в публичный `server.registerTool(name, {description, inputSchema, annotations}, cb)`. Раньше npm-диапазон `^1.27.1` пускал SDK, где поле могло переименоваться, и тогда все пять серверов падали бы на старте. Полный `tools/list` (имена, `inputSchema`, описания, annotations, порядок) байт-в-байт тот же на SDK 1.27.1 из `bun.lock` и на последней 1.32.1.
+- `scripts/sdk-public-api.test.mjs`: в `src/` нет `_registeredTools` и обращений к приватным полям `server`, `index.mjs` регистрирует тулы только через регистратор, регистратор отказывает тулу вне SURFACE и записи SURFACE без регистрации.
+
 ## 2026-10-10 — Описания тулов, установка в клиенты и .mcpb
 
 ### Added

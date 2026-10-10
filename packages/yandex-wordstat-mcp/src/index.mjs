@@ -7,7 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { alignDates, DAILY_MAX_AGE_DAYS } from './dates.mjs';
-import { applyToolSurface } from './tool-surface.mjs';
+import { createToolRegistrar } from './tool-surface.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -228,9 +228,10 @@ async function runServer() {
   // --- MCP Server ---
 
   const server = new McpServer({ name: 'yandex-wordstat', version: '2.2.0' });
+  const registrar = createToolRegistrar(server);
 
   // Tool 1: get-regions-tree
-  server.tool(
+  registrar.tool(
     'get-regions-tree',
     'Get the Yandex Wordstat regions hierarchy tree.',
     {
@@ -247,7 +248,7 @@ async function runServer() {
   );
 
   // Tool 2: get-region-children
-  server.tool(
+  registrar.tool(
     'get-region-children',
     'Get children of a specific region from cached tree.',
     {
@@ -278,7 +279,7 @@ async function runServer() {
   );
 
   // Tool 3: top-requests
-  server.tool(
+  registrar.tool(
     'top-requests',
     'Find popular search queries containing a keyword (last 30 days), with associated queries.',
     {
@@ -315,7 +316,7 @@ async function runServer() {
   );
 
   // Tool 4: dynamics
-  server.tool(
+  registrar.tool(
     'dynamics',
     'Analyze search volume trends over time for a keyword. ' +
       `Window rules enforced by the API: daily covers only the last ${DAILY_MAX_AGE_DAYS} days; ` +
@@ -376,7 +377,7 @@ async function runServer() {
   );
 
   // Tool 5: regions
-  server.tool(
+  registrar.tool(
     'regions',
     'Get regional distribution of search interest for a keyword.',
     {
@@ -446,7 +447,7 @@ async function runServer() {
     },
   );
 
-  applyToolSurface(server);
+  registrar.finish();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

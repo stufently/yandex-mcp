@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { EMPTY_RESULT_ERROR_CODES, parseError, parseFound, parseSearchResults } from './parse.mjs';
-import { applyToolSurface } from './tool-surface.mjs';
+import { createToolRegistrar } from './tool-surface.mjs';
 
 await runServer();
 
@@ -81,8 +81,9 @@ async function runServer() {
   // --- MCP Server ---
 
   const server = new McpServer({ name: 'yandex-search', version: '2.2.0' });
+  const registrar = createToolRegistrar(server);
 
-  server.tool(
+  registrar.tool(
     'search',
     'Search the web using Yandex Search API. Returns ranked results with titles, snippets, and URLs.',
     {
@@ -191,7 +192,7 @@ async function runServer() {
     },
   );
 
-  applyToolSurface(server);
+  registrar.finish();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

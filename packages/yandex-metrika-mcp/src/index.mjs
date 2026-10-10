@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { CONFIRM_PARAM_DESCRIPTION, createDeleteCounterHandler } from './confirm.mjs';
 import { scopeHint, WRITE_SCOPE } from './scopes.mjs';
-import { applyToolSurface } from './tool-surface.mjs';
+import { createToolRegistrar } from './tool-surface.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -188,11 +188,12 @@ async function runServer() {
   // --- MCP Server ---
 
   const server = new McpServer({ name: 'yandex-metrika', version: '2.2.0' });
+  const registrar = createToolRegistrar(server);
 
   // === Management (5 tools) ===
 
   // 1. get-counters
-  server.tool('get-counters', 'List all Metrika counters (sites).', {}, async () => {
+  registrar.tool('get-counters', 'List all Metrika counters (sites).', {}, async () => {
     const data = await managementRequest('/counters');
     const counters = data.counters || [];
     const summary = counters.map((c) => `${c.id}: ${c.name} (${c.site}) [${c.status}]`).join('\n');
@@ -203,7 +204,7 @@ async function runServer() {
   });
 
   // 2. get-counter
-  server.tool(
+  registrar.tool(
     'get-counter',
     'Get details for a specific Metrika counter.',
     {
@@ -225,7 +226,7 @@ async function runServer() {
   );
 
   // 3. get-goals
-  server.tool(
+  registrar.tool(
     'get-goals',
     'Get goals for a Metrika counter.',
     {
@@ -243,7 +244,7 @@ async function runServer() {
   );
 
   // 4. create-counter
-  server.tool(
+  registrar.tool(
     'create-counter',
     `Create a new Metrika counter (add a site). Requires an OAuth token with the \`${WRITE_SCOPE}\` scope; a read-only token fails with 403.`,
     {
@@ -287,7 +288,7 @@ async function runServer() {
   // `confirm` is optional in the schema on purpose — a missing confirmation must
   // come back as the explanatory refusal from `confirm.mjs`, not as a schema
   // validation error the model cannot act on.
-  server.registerTool(
+  registrar.registerTool(
     'delete-counter',
     {
       description:
@@ -312,7 +313,7 @@ async function runServer() {
   // === Reporting (6 tools) ===
 
   // 6. get-traffic-summary
-  server.tool(
+  registrar.tool(
     'get-traffic-summary',
     'Get traffic summary: visits, users, pageviews, bounce rate, avg duration.',
     {
@@ -348,7 +349,7 @@ async function runServer() {
   );
 
   // 7. get-traffic-sources
-  server.tool(
+  registrar.tool(
     'get-traffic-sources',
     'Get traffic breakdown by source.',
     {
@@ -379,7 +380,7 @@ async function runServer() {
   );
 
   // 8. get-geography
-  server.tool(
+  registrar.tool(
     'get-geography',
     'Get traffic breakdown by country and city.',
     {
@@ -409,7 +410,7 @@ async function runServer() {
   );
 
   // 9. get-devices
-  server.tool(
+  registrar.tool(
     'get-devices',
     'Get traffic breakdown by device, browser, or OS.',
     {
@@ -445,7 +446,7 @@ async function runServer() {
   );
 
   // 10. get-popular-pages
-  server.tool(
+  registrar.tool(
     'get-popular-pages',
     'Get most visited pages.',
     {
@@ -476,7 +477,7 @@ async function runServer() {
   );
 
   // 11. get-search-phrases
-  server.tool(
+  registrar.tool(
     'get-search-phrases',
     'Get top search phrases driving traffic.',
     {
@@ -506,7 +507,7 @@ async function runServer() {
   );
 
   // 12. get-report (custom)
-  server.tool(
+  registrar.tool(
     'get-report',
     'Run a custom Metrika report with arbitrary metrics and dimensions.',
     {
@@ -541,7 +542,7 @@ async function runServer() {
     },
   );
 
-  applyToolSurface(server);
+  registrar.finish();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

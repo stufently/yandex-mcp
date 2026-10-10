@@ -12,7 +12,7 @@ import {
 } from './confirm.mjs';
 import { formatDirectError, isRetryableDirectError, isRetrySafeMethod } from './errors.mjs';
 import { parseTsv } from './report.mjs';
-import { applyToolSurface } from './tool-surface.mjs';
+import { createToolRegistrar } from './tool-surface.mjs';
 
 await runServer();
 
@@ -230,7 +230,7 @@ async function runServer() {
    * Register a "get" tool for a standard Direct service.
    * Creates a tool that calls `service.get` with SelectionCriteria, FieldNames, and Page.
    */
-  function registerGetTool(server, toolName, service, description, filterFields) {
+  function registerGetTool(registrar, toolName, service, description, filterFields) {
     const schema = {
       field_names: z
         .array(z.string())
@@ -259,7 +259,7 @@ async function runServer() {
     schema.limit = z.number().min(1).max(10000).optional().describe('Page limit (default 100, max 10000)');
     schema.offset = z.number().min(0).optional().describe('Page offset (default 0)');
 
-    server.tool(toolName, description, schema, async (params) => {
+    registrar.tool(toolName, description, schema, async (params) => {
       const selectionCriteria = {};
       for (const fieldName of Object.keys(filterFields)) {
         if (params[fieldName] && params[fieldName].length > 0) {
@@ -303,8 +303,8 @@ async function runServer() {
    * (moderate), so none of them needs confirmation. Deletion goes through
    * {@link registerDeleteTool} instead.
    */
-  function registerActionTool(server, toolName, service, method, description) {
-    server.tool(
+  function registerActionTool(registrar, toolName, service, method, description) {
+    registrar.tool(
       toolName,
       description,
       {
@@ -340,8 +340,8 @@ async function runServer() {
    * because the annotations live in its config object and because the
    * `server.tool(...)` overload is deprecated in the SDK.
    */
-  function registerDeleteTool(server, toolName, service, description, { entity, inspect, title }) {
-    server.registerTool(
+  function registerDeleteTool(registrar, toolName, service, description, { entity, inspect, title }) {
+    registrar.registerTool(
       toolName,
       {
         description:
@@ -372,8 +372,8 @@ async function runServer() {
   /**
    * Register an "add" tool. Accepts a JSON string of items to add.
    */
-  function registerAddTool(server, toolName, service, description, itemsKey, itemsDesc) {
-    server.tool(
+  function registerAddTool(registrar, toolName, service, description, itemsKey, itemsDesc) {
+    registrar.tool(
       toolName,
       description,
       {
@@ -426,8 +426,16 @@ async function runServer() {
    * strategy is unrecoverable the moment the call succeeds. That is a loss, not
    * a reversible change, even though nothing is "deleted".
    */
-  function registerUpdateTool(server, toolName, service, description, itemsKey, itemsDesc, { entity, inspect, title }) {
-    server.registerTool(
+  function registerUpdateTool(
+    registrar,
+    toolName,
+    service,
+    description,
+    itemsKey,
+    itemsDesc,
+    { entity, inspect, title },
+  ) {
+    registrar.registerTool(
       toolName,
       {
         description:
@@ -492,13 +500,14 @@ async function runServer() {
   // --- MCP Server ---
 
   const server = new McpServer({ name: 'yandex-direct-mcp', version: '2.2.0' });
+  const registrar = createToolRegistrar(server);
 
   // ===========================
   // Campaigns (8 tools)
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_campaigns',
     'campaigns',
     'Get campaigns. Common FieldNames: Id, Name, Status, State, Type, StartDate, EndDate, DailyBudget, Statistics, ClientInfo, TimeTargeting, NegativeKeywords, BlockedIps, StatusPayment, StatusClarification, SourceId, Currency, Funds, RepresentedBy.',
@@ -512,7 +521,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_campaigns',
     'campaigns',
     'Add new campaigns. Pass a JSON array of campaign objects. Each must include Name and a campaign-type-specific settings object (e.g. TextCampaign, DynamicTextCampaign).',
@@ -521,7 +530,7 @@ async function runServer() {
   );
 
   registerUpdateTool(
-    server,
+    registrar,
     'update_campaigns',
     'campaigns',
     'Update existing campaigns. Pass a JSON array of campaign objects with Id and fields to update.',
@@ -530,22 +539,22 @@ async function runServer() {
     { entity: 'campaigns', inspect: 'get_campaigns', title: 'Update Direct campaigns' },
   );
 
-  registerDeleteTool(server, 'delete_campaigns', 'campaigns', 'Delete campaigns by IDs.', {
+  registerDeleteTool(registrar, 'delete_campaigns', 'campaigns', 'Delete campaigns by IDs.', {
     entity: 'campaigns',
     inspect: 'get_campaigns',
     title: 'Delete Direct campaigns',
   });
-  registerActionTool(server, 'archive_campaigns', 'campaigns', 'archive', 'Archive campaigns by IDs.');
-  registerActionTool(server, 'unarchive_campaigns', 'campaigns', 'unarchive', 'Unarchive campaigns by IDs.');
-  registerActionTool(server, 'suspend_campaigns', 'campaigns', 'suspend', 'Suspend (pause) campaigns by IDs.');
-  registerActionTool(server, 'resume_campaigns', 'campaigns', 'resume', 'Resume campaigns by IDs.');
+  registerActionTool(registrar, 'archive_campaigns', 'campaigns', 'archive', 'Archive campaigns by IDs.');
+  registerActionTool(registrar, 'unarchive_campaigns', 'campaigns', 'unarchive', 'Unarchive campaigns by IDs.');
+  registerActionTool(registrar, 'suspend_campaigns', 'campaigns', 'suspend', 'Suspend (pause) campaigns by IDs.');
+  registerActionTool(registrar, 'resume_campaigns', 'campaigns', 'resume', 'Resume campaigns by IDs.');
 
   // ===========================
   // AdGroups (6 tools)
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_adgroups',
     'adgroups',
     'Get ad groups. Common FieldNames: Id, Name, CampaignId, Status, Type, RegionIds, NegativeKeywords, TrackingParams, ServingStatuses, Subtype.',
@@ -556,7 +565,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_adgroups',
     'adgroups',
     'Add new ad groups. Each must include Name, CampaignId, RegionIds, and optionally type-specific settings.',
@@ -565,7 +574,7 @@ async function runServer() {
   );
 
   registerUpdateTool(
-    server,
+    registrar,
     'update_adgroups',
     'adgroups',
     'Update existing ad groups. Pass a JSON array with Id and fields to update.',
@@ -574,20 +583,20 @@ async function runServer() {
     { entity: 'ad groups', inspect: 'get_adgroups', title: 'Update Direct ad groups' },
   );
 
-  registerDeleteTool(server, 'delete_adgroups', 'adgroups', 'Delete ad groups by IDs.', {
+  registerDeleteTool(registrar, 'delete_adgroups', 'adgroups', 'Delete ad groups by IDs.', {
     entity: 'ad groups',
     inspect: 'get_adgroups',
     title: 'Delete Direct ad groups',
   });
-  registerActionTool(server, 'archive_adgroups', 'adgroups', 'archive', 'Archive ad groups by IDs.');
-  registerActionTool(server, 'unarchive_adgroups', 'adgroups', 'unarchive', 'Unarchive ad groups by IDs.');
+  registerActionTool(registrar, 'archive_adgroups', 'adgroups', 'archive', 'Archive ad groups by IDs.');
+  registerActionTool(registrar, 'unarchive_adgroups', 'adgroups', 'unarchive', 'Unarchive ad groups by IDs.');
 
   // ===========================
   // Ads (7 tools)
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_ads',
     'ads',
     'Get ads. Common FieldNames: Id, AdGroupId, CampaignId, Status, State, Type, StatusClarification, TextAd, DynamicTextAd, MobileAppAd, CpmBannerAdBuilderAd, SmartAdBuilderAd. Use TextAd field to get ad texts.',
@@ -601,7 +610,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_ads',
     'ads',
     'Add new ads. Each must include AdGroupId and an ad-type-specific object (TextAd, DynamicTextAd, etc.).',
@@ -610,7 +619,7 @@ async function runServer() {
   );
 
   registerUpdateTool(
-    server,
+    registrar,
     'update_ads',
     'ads',
     'Update existing ads. Pass a JSON array with Id and fields to update.',
@@ -619,21 +628,21 @@ async function runServer() {
     { entity: 'ads', inspect: 'get_ads', title: 'Update Direct ads' },
   );
 
-  registerDeleteTool(server, 'delete_ads', 'ads', 'Delete ads by IDs.', {
+  registerDeleteTool(registrar, 'delete_ads', 'ads', 'Delete ads by IDs.', {
     entity: 'ads',
     inspect: 'get_ads',
     title: 'Delete Direct ads',
   });
-  registerActionTool(server, 'archive_ads', 'ads', 'archive', 'Archive ads by IDs.');
-  registerActionTool(server, 'unarchive_ads', 'ads', 'unarchive', 'Unarchive ads by IDs.');
-  registerActionTool(server, 'moderate_ads', 'ads', 'moderate', 'Send ads for moderation by IDs.');
+  registerActionTool(registrar, 'archive_ads', 'ads', 'archive', 'Archive ads by IDs.');
+  registerActionTool(registrar, 'unarchive_ads', 'ads', 'unarchive', 'Unarchive ads by IDs.');
+  registerActionTool(registrar, 'moderate_ads', 'ads', 'moderate', 'Send ads for moderation by IDs.');
 
   // ===========================
   // Keywords (6 tools)
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_keywords',
     'keywords',
     'Get keywords. Common FieldNames: Id, Keyword, AdGroupId, CampaignId, Status, State, Bid, ContextBid, StrategyPriority, UserParam1, UserParam2, Productivity, StatisticsSearch, StatisticsNetwork.',
@@ -645,7 +654,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_keywords',
     'keywords',
     'Add new keywords. Each must include Keyword text and AdGroupId.',
@@ -654,7 +663,7 @@ async function runServer() {
   );
 
   registerUpdateTool(
-    server,
+    registrar,
     'update_keywords',
     'keywords',
     'Update existing keywords. Pass a JSON array with Id and fields to update.',
@@ -663,20 +672,20 @@ async function runServer() {
     { entity: 'keywords', inspect: 'get_keywords', title: 'Update Direct keywords' },
   );
 
-  registerDeleteTool(server, 'delete_keywords', 'keywords', 'Delete keywords by IDs.', {
+  registerDeleteTool(registrar, 'delete_keywords', 'keywords', 'Delete keywords by IDs.', {
     entity: 'keywords',
     inspect: 'get_keywords',
     title: 'Delete Direct keywords',
   });
-  registerActionTool(server, 'suspend_keywords', 'keywords', 'suspend', 'Suspend keywords by IDs.');
-  registerActionTool(server, 'resume_keywords', 'keywords', 'resume', 'Resume keywords by IDs.');
+  registerActionTool(registrar, 'suspend_keywords', 'keywords', 'suspend', 'Suspend keywords by IDs.');
+  registerActionTool(registrar, 'resume_keywords', 'keywords', 'resume', 'Resume keywords by IDs.');
 
   // ===========================
   // KeywordBids (3 tools)
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_keyword_bids',
     'keywordbids',
     'Get keyword bids. Common FieldNames: KeywordId, AdGroupId, CampaignId, Bid, ContextBid, CurrentSearchPrice, MinSearchPrice, StrategyPriority.',
@@ -692,7 +701,7 @@ async function runServer() {
   // Guarded: a bid is what the account pays per click. The call overwrites the
   // current value with no way to read the old one back, so a mistaken bid is
   // both unrecoverable and immediately expensive.
-  server.registerTool(
+  registrar.registerTool(
     'set_keyword_bids',
     {
       description:
@@ -741,7 +750,7 @@ async function runServer() {
   );
 
   // set auto keyword bids (custom)
-  server.registerTool(
+  registrar.registerTool(
     'set_auto_keyword_bids',
     {
       description:
@@ -796,7 +805,7 @@ async function runServer() {
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_bid_modifiers',
     'bidmodifiers',
     'Get bid modifiers. Common FieldNames: Id, CampaignId, AdGroupId, Type, Level, MobileAdjustment, DesktopAdjustment, DemographicsAdjustment, RetargetingAdjustment, RegionalAdjustment, VideoAdjustment, SmartAdAdjustment, IncomeGradeAdjustment.',
@@ -811,7 +820,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_bid_modifiers',
     'bidmodifiers',
     'Add bid modifiers. Each must include CampaignId or AdGroupId and an adjustment object.',
@@ -820,7 +829,7 @@ async function runServer() {
   );
 
   // set bid modifiers (custom)
-  server.registerTool(
+  registrar.registerTool(
     'set_bid_modifiers',
     {
       description:
@@ -869,7 +878,7 @@ async function runServer() {
     ),
   );
 
-  registerDeleteTool(server, 'delete_bid_modifiers', 'bidmodifiers', 'Delete bid modifiers by IDs.', {
+  registerDeleteTool(registrar, 'delete_bid_modifiers', 'bidmodifiers', 'Delete bid modifiers by IDs.', {
     entity: 'bid modifiers',
     inspect: 'get_bid_modifiers',
     title: 'Delete Direct bid modifiers',
@@ -880,7 +889,7 @@ async function runServer() {
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_sitelinks',
     'sitelinks',
     'Get sitelink sets. Common FieldNames: Id, Sitelinks. Each Sitelinks contains an array of {Title, Href, Description}.',
@@ -890,7 +899,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_sitelinks',
     'sitelinks',
     'Add sitelink sets. Each set contains a Sitelinks array of {Title, Href, Description} objects (2-8 sitelinks per set).',
@@ -898,7 +907,7 @@ async function runServer() {
     'JSON array of sitelink set objects, e.g. [{"Sitelinks":[{"Title":"About","Href":"https://example.com/about"},{"Title":"Contacts","Href":"https://example.com/contacts"}]}]',
   );
 
-  registerDeleteTool(server, 'delete_sitelinks', 'sitelinks', 'Delete sitelink sets by IDs.', {
+  registerDeleteTool(registrar, 'delete_sitelinks', 'sitelinks', 'Delete sitelink sets by IDs.', {
     entity: 'sitelink sets',
     inspect: 'get_sitelinks',
     title: 'Delete Direct sitelink sets',
@@ -909,7 +918,7 @@ async function runServer() {
   // ===========================
 
   registerGetTool(
-    server,
+    registrar,
     'get_vcards',
     'vcards',
     'Get VCards (business cards). Common FieldNames: Id, CampaignId, CompanyName, WorkTime, Phone, Street, Building, City, Country, Ogrn, InstantMessenger, ExtraMessage, ContactEmail, ContactPerson.',
@@ -919,7 +928,7 @@ async function runServer() {
   );
 
   registerAddTool(
-    server,
+    registrar,
     'add_vcards',
     'vcards',
     'Add VCards. Each must include CampaignId, Country, City, CompanyName, WorkTime, and Phone.',
@@ -927,7 +936,7 @@ async function runServer() {
     'JSON array of VCard objects, e.g. [{"CampaignId":12345,"Country":"Россия","City":"Москва","CompanyName":"My Company","WorkTime":"0;6;9;0;18;0","Phone":{"CountryCode":"+7","CityCode":"495","PhoneNumber":"1234567"}}]',
   );
 
-  registerDeleteTool(server, 'delete_vcards', 'vcards', 'Delete VCards by IDs.', {
+  registerDeleteTool(registrar, 'delete_vcards', 'vcards', 'Delete VCards by IDs.', {
     entity: 'VCards',
     inspect: 'get_vcards',
     title: 'Delete Direct VCards',
@@ -937,7 +946,7 @@ async function runServer() {
   // Reports (1 tool)
   // ===========================
 
-  server.tool(
+  registrar.tool(
     'create_report',
     'Create a Yandex Direct report. Supported ReportType: ACCOUNT_PERFORMANCE_REPORT, AD_PERFORMANCE_REPORT, ADGROUP_PERFORMANCE_REPORT, CAMPAIGN_PERFORMANCE_REPORT, CRITERIA_PERFORMANCE_REPORT, CUSTOM_REPORT, REACH_AND_FREQUENCY_PERFORMANCE_REPORT, SEARCH_QUERY_PERFORMANCE_REPORT. DateRangeType: TODAY, YESTERDAY, THIS_MONTH, LAST_MONTH, THIS_QUARTER, LAST_QUARTER, THIS_YEAR, LAST_YEAR, ALL_TIME, CUSTOM_DATE, LAST_3_DAYS, LAST_5_DAYS, LAST_7_DAYS, LAST_14_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_365_DAYS, AUTO. Result is returned as JSON array parsed from TSV (max 500 rows).',
     {
@@ -1043,7 +1052,7 @@ async function runServer() {
   // Dictionaries (1 tool)
   // ===========================
 
-  server.tool(
+  registrar.tool(
     'get_dictionaries',
     'Get Yandex Direct dictionaries (reference data). Available dictionaries: Currencies, MetroStations, GeoRegions, TimeZones, Constants, Categories, OperationSystemVersions, InterestCategories, Interests, AudienceInterests.',
     {
@@ -1088,7 +1097,7 @@ async function runServer() {
   // Clients (1 tool)
   // ===========================
 
-  server.tool(
+  registrar.tool(
     'get_clients',
     'Get client info (for agency accounts). Common FieldNames: Login, ClientId, ClientInfo, AccountQuality, Archived, CountryId, CreatedAt, Currency, Grants, Notification, OverdraftSumAvailable, Phone, Representatives, Restrictions, Settings, Type.',
     {
@@ -1110,7 +1119,7 @@ async function runServer() {
 
   // --- Connect transport ---
 
-  applyToolSurface(server);
+  registrar.finish();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
