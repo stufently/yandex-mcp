@@ -12,6 +12,7 @@ import {
 } from './confirm.mjs';
 import { formatDirectError, isRetryableDirectError, isRetrySafeMethod } from './errors.mjs';
 import { parseTsv } from './report.mjs';
+import { applyToolSurface } from './tool-surface.mjs';
 
 await runServer();
 
@@ -1108,6 +1109,8 @@ async function runServer() {
   );
 
   // --- Connect transport ---
+
+  applyToolSurface(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

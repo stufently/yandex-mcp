@@ -1,0 +1,74 @@
+{
+  "manifest_version": "0.3",
+  "name": "yandex-wordstat-mcp",
+  "display_name": "Yandex Wordstat",
+  "description": "Keyword volumes, trends, and regions from Yandex Wordstat.",
+  "long_description": "Looks up Yandex search demand: popular queries, dynamics, and regional distribution. Read-only. To run it you need a Yandex Cloud API key for a service account with the search-api.webSearch.user role, and the folder id.",
+  "author": {
+    "name": "stufently"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stufently/yandex-mcp"
+  },
+  "homepage": "https://github.com/stufently/yandex-mcp",
+  "support": "https://github.com/stufently/yandex-mcp/issues",
+  "license": "MIT",
+  "keywords": ["yandex", "wordstat", "keywords", "mcp"],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "src/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/src/index.mjs"],
+      "env": {
+        "WORDSTAT_API_KEY": "${user_config.api_key}",
+        "WORDSTAT_FOLDER_ID": "${user_config.folder_id}"
+      }
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "Wordstat API key",
+      "description": "Yandex Cloud API key for a service account with the search-api.webSearch.user role.",
+      "sensitive": true,
+      "required": true
+    },
+    "folder_id": {
+      "type": "string",
+      "title": "Folder ID",
+      "description": "Yandex Cloud folder id for the Wordstat API key.",
+      "required": true
+    }
+  },
+  "privacy_policies": ["https://yandex.com/legal/confidential/"],
+  "tools": [
+    {
+      "name": "get-regions-tree",
+      "description": "Get the Yandex Wordstat regions hierarchy tree. Use when the user needs Yandex region ids and the hierarchy before filtering other Wordstat calls. Do not use it to measure how often a phrase is searched; call top-requests, dynamics, or regions for demand."
+    },
+    {
+      "name": "get-region-children",
+      "description": "Get children of a specific region from cached tree. Use when the user already has one region id and wants only that region children, not the whole tree. Do not use it for phrase demand; call top-requests or regions, and call get-regions-tree to browse from the root."
+    },
+    {
+      "name": "top-requests",
+      "description": "Find popular search queries containing a keyword (last 30 days), with associated queries. Use when the user asks how often people search a phrase on Yandex in the last 30 days and which related queries appear. Do not use it for a multi-month trend; call dynamics. Do not use it for region ids; call get-regions-tree."
+    },
+    {
+      "name": "dynamics",
+      "description": "Analyze search volume trends over time for a keyword. Window rules enforced by the API: daily covers only the last 59 days; weekly must start on a Monday and end on a Sunday; monthly must span whole months. Dates outside those rules are snapped to the nearest valid window and the shift is reported. Use when the user asks whether demand for one phrase is growing or falling over days, weeks, or months. Do not use it for the list of related queries; call top-requests. Do not use it to compare regions; call regions."
+    },
+    {
+      "name": "regions",
+      "description": "Get regional distribution of search interest for a keyword. Use when the user asks which regions search a phrase the most, or wants volume and affinity by region. Do not use it to browse the region tree; call get-regions-tree. Do not use it for a time trend; call dynamics."
+    }
+  ]
+}

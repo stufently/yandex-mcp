@@ -1,0 +1,179 @@
+{
+  "manifest_version": "0.3",
+  "name": "yandex-webmaster-mcp",
+  "display_name": "Yandex Webmaster",
+  "description": "Yandex Webmaster site analytics, indexing, and search queries.",
+  "long_description": "Reads Webmaster hosts, search queries, indexing, diagnostics, links, and sitemaps, and can add a host, a sitemap, or a recrawl URL. Deleting a host is irreversible and asks for confirmation. To run it you need an OAuth token for Yandex Webmaster.",
+  "author": {
+    "name": "stufently"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stufently/yandex-mcp"
+  },
+  "homepage": "https://github.com/stufently/yandex-mcp",
+  "support": "https://github.com/stufently/yandex-mcp/issues",
+  "license": "MIT",
+  "keywords": ["yandex", "webmaster", "seo", "indexing", "mcp"],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=22"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "src/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/src/index.mjs"],
+      "env": {
+        "YANDEX_WEBMASTER_TOKEN": "${user_config.token}"
+      }
+    }
+  },
+  "user_config": {
+    "token": {
+      "type": "string",
+      "title": "Webmaster OAuth token",
+      "description": "OAuth token for the Yandex Webmaster API.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "privacy_policies": ["https://yandex.com/legal/confidential/"],
+  "tools": [
+    {
+      "name": "get-user",
+      "description": "Get current Webmaster user info and user_id. Use when the user needs the Webmaster account id before a call that is not already scoped to a host. Do not use it to list sites; call list-hosts, which also returns the host_id every other tool expects."
+    },
+    {
+      "name": "list-hosts",
+      "description": "List all hosts (sites) in Webmaster with their host_id — the identifier every other tool requires (format \"https:example.com:443\"). Take it from here instead of assembling it by hand. Use when the user asks which sites are in Webmaster or needs a host_id for any later call. Do not use it for one site SQI or problems; call get-summary or get-diagnostics after the host_id is known."
+    },
+    {
+      "name": "get-host",
+      "description": "Get details for a specific host. Use when the user wants the verification flag and data status of one host. Do not use it to list every site; call list-hosts. Do not use it to start the ownership check; call start-verification after verify-host."
+    },
+    {
+      "name": "get-summary",
+      "description": "Get site summary: SQI, pages count, problems. Use when the user wants the current SQI, page counts, and problem totals for a host. Do not use it for the list of excluded URLs; call get-excluded-pages. Do not use it for SQI over time; call get-sqi-history."
+    },
+    {
+      "name": "get-sqi-history",
+      "description": "Get SQI (Site Quality Index) history over time. Use when the user asks how the Site Quality Index changed over a date range. Do not use it for the single current SQI; call get-summary. Do not use it for indexing counts; call get-indexing-history."
+    },
+    {
+      "name": "get-diagnostics",
+      "description": "Get site diagnostics. Text lists problems in state PRESENT (code, severity, date); full response is in structuredContent. Use when the user asks what site problems Yandex currently reports, such as mobile or security issues. Do not use it for pages that dropped out of search; call get-excluded-pages or get-search-events-samples."
+    },
+    {
+      "name": "get-popular-queries",
+      "description": "Get popular search queries for a site. Use when the user wants the top queries for a site by shows or clicks. Do not use it for the day-by-day totals of all queries; call get-query-history. Do not use it for pages in search; call get-insearch-samples."
+    },
+    {
+      "name": "get-query-history",
+      "description": "Get search query totals history. Use when the user asks how shows, clicks, or average position moved over time for the site as a whole. Do not use it for the ranking of individual queries; call get-popular-queries."
+    },
+    {
+      "name": "get-indexing-history",
+      "description": "Get indexing history over time. Use when the user asks how the number of indexed pages changed over time. Do not use it for example URLs; call get-indexing-samples. Do not use it for pages that appear in search results; call get-insearch-history."
+    },
+    {
+      "name": "get-indexing-samples",
+      "description": "Get sample indexed URLs. Use when the user wants example URLs Yandex has indexed. Do not use it for the count over time; call get-indexing-history. Do not use it for URLs that dropped out of results; call get-search-events-samples."
+    },
+    {
+      "name": "get-insearch-history",
+      "description": "Get in-search (appearing in results) history. Use when the user asks how many pages were present in search results over time. Do not use it for example URLs; call get-insearch-samples. Do not use it for the indexed-page series; call get-indexing-history."
+    },
+    {
+      "name": "get-insearch-samples",
+      "description": "Get sample URLs appearing in search. Use when the user wants example URLs that currently appear in search. Do not use it for pages that were removed; call get-search-events-samples or get-excluded-pages. Do not use it for the history series; call get-insearch-history."
+    },
+    {
+      "name": "get-search-events-history",
+      "description": "Get search URL events history (appeared/removed). Use when the user wants the count of appeared and removed search URLs over time. Do not use it for the URLs themselves or the exclusion reason; call get-search-events-samples or get-excluded-pages."
+    },
+    {
+      "name": "get-search-events-samples",
+      "description": "Get sample URLs for search events (appeared in / removed from search), with the reason each page was dropped (excluded_url_status). This is the only place API v4 exposes per-URL exclusion reasons — get-summary only has the aggregate excluded_pages_count. Note: the API has no server-side event filter, so event_type is applied to the fetched page and offset/limit still paginate the unfiltered stream. Use when the user wants sample URLs that appeared in or left search, including excluded_url_status. Do not use it to walk only dropped pages across a window; call get-excluded-pages. Do not use it for the event counts; call get-search-events-history."
+    },
+    {
+      "name": "get-excluded-pages",
+      "description": "Pages DROPPED FROM SEARCH inside a time window, with the reason for each one (url + excluded_url_status, plus bad_http_status for HTTP_ERROR and target_url for redirect/canonical/duplicate cases). READ THE NATURE OF THIS DATA: API v4 has no \"currently excluded pages\" resource, only the event log /search-urls/events/samples, so this is built from REMOVED_FROM_SEARCH EVENTS in the scanned window, not from a live index snapshot. Events are deduplicated per URL with the latest one winning, so a page that dropped and came back is NOT reported as excluded — it is listed separately under `returned_to_search`. The window is bounded by `limit`/`max_requests`, so an older exclusion outside it is invisible, and `summary_excluded_pages_count` (the aggregate from get-summary, returned alongside) is a DIFFERENT kind of number that is not expected to match the length of this list. Deduplication spans ONE call: when continuing a walk with `offset`, pass the URLs from the previous `returned_to_search` in `returned_urls`, otherwise a page whose return fell in the earlier window will be reported as excluded again. There is no server-side event filter, so the tool walks the mixed stream page by page until it has collected `limit` excluded pages (at most `max_requests` page fetches — retries are not counted, so HTTP calls can be more) and reports next_offset/exhausted to continue the walk. Use when the user asks which pages dropped out of search and why, inside a scanned window. Do not use it for the aggregate excluded_pages_count; that number comes from get-summary and is a different kind of count. Do not use it for a single mixed page of events; call get-search-events-samples."
+    },
+    {
+      "name": "get-external-links",
+      "description": "Get external links pointing to the site. Use when the user wants sample pages on other sites that link to this host. Do not use it for the count over time; call get-external-links-history. Do not use it for broken links inside the site; call get-broken-internal-links."
+    },
+    {
+      "name": "get-external-links-history",
+      "description": "Get external links count history. Use when the user asks whether the number of external links rose or fell. Do not use it for the linking URLs themselves; call get-external-links. Do not use it for internal broken links; call get-broken-internal-links-history."
+    },
+    {
+      "name": "get-broken-internal-links",
+      "description": "List broken internal links (destination URL, the source page linking to it, and when Yandex last checked the link). Records can be months old: `source_last_access_date` equal to `discovery_date` means the link has NOT been re-verified since the problem was found, so it may already be fixed. Such records are flagged `stale` / \"never re-checked\" — verify before treating the count as a live failure. Use when the user asks which internal links look broken and whether Yandex has rechecked them. Do not use it for the count over time; call get-broken-internal-links-history. Do not use it for links from other sites; call get-external-links."
+    },
+    {
+      "name": "get-broken-internal-links-history",
+      "description": "Get broken internal links count history. Use when the user asks how the broken-internal-link count changed over time. Do not use it for the source and destination URLs; call get-broken-internal-links, and read source_last_access_date before treating a row as a live failure."
+    },
+    {
+      "name": "get-sitemaps",
+      "description": "List all sitemaps for a host. Use when the user wants every sitemap Yandex knows for the host, including ones it discovered. Do not use it for only the files the user uploaded; call get-user-sitemaps. Do not use it to add a file; call add-sitemap."
+    },
+    {
+      "name": "get-sitemap",
+      "description": "Get details for a specific sitemap. Use when the user already has a sitemap id and wants that file details. Do not use it to list files; call get-sitemaps or get-user-sitemaps. Do not use it to upload a sitemap; call add-sitemap."
+    },
+    {
+      "name": "get-user-sitemaps",
+      "description": "List user-added sitemaps. Use when the user asks which sitemap files were added by hand. Do not use it for sitemaps Yandex found on its own; call get-sitemaps. Do not use it to add a file; call add-sitemap."
+    },
+    {
+      "name": "add-sitemap",
+      "description": "Add a Sitemap file to Yandex Webmaster (user-added sitemaps). Returns sitemap_id. The host must be verified, or the call fails with 404 HOST_NOT_VERIFIED. Adding a file that is already there fails with 409 SITEMAP_ALREADY_ADDED — not a broken call but \"already present\", and the error payload names the existing sitemap_id. Use when the user asks to register a sitemap URL on an already verified host. Do not use it to list files; call get-user-sitemaps. Do not use it to delete the host; call delete-host, which is irreversible and requires confirm."
+    },
+    {
+      "name": "get-important-urls",
+      "description": "Get important URLs for a site. Use when the user wants the important URLs configured for the host. Do not use it for the history of one URL; call get-important-url-history. Do not use it for indexed samples; call get-indexing-samples."
+    },
+    {
+      "name": "get-important-url-history",
+      "description": "Get history for a specific important URL. Use when the user asks how one important URL changed over time. Do not use it to list the important URLs; call get-important-urls. Do not use it for search-event samples; call get-search-events-samples."
+    },
+    {
+      "name": "get-recrawl-quota",
+      "description": "Get recrawl quota for a host. Use when the user asks how many recrawl requests are left today. Do not use it to send a URL; call add-recrawl-url. Do not use it to see queued tasks; call get-recrawl-queue."
+    },
+    {
+      "name": "add-recrawl-url",
+      "description": "Enqueue a URL for Yandex re-crawl. Daily quota applies (check get-recrawl-quota). Returns task_id. Use when the user asks Yandex to recrawl one URL and the daily quota still has room. Do not use it to check the quota first; call get-recrawl-quota. Do not use it to read a task later; call get-recrawl-task with the returned task id."
+    },
+    {
+      "name": "get-recrawl-queue",
+      "description": "List recrawl queue for a host (URLs submitted via add-recrawl-url with their state). Use when the user wants the list of URLs already sent for recrawl and their states. Do not use it for one known task id; call get-recrawl-task. Do not use it to enqueue a URL; call add-recrawl-url."
+    },
+    {
+      "name": "get-recrawl-task",
+      "description": "Get state of a single recrawl task by task_id (returned by add-recrawl-url). Use when the user has a task id from add-recrawl-url and wants that task state. Do not use it to list the queue; call get-recrawl-queue. Do not use it to spend quota; call add-recrawl-url."
+    },
+    {
+      "name": "add-host",
+      "description": "Add a new site (host) to Yandex Webmaster. The host_url must include protocol (e.g. \"https://example.com\"). After adding, the host needs verification. Use when the user asks to add a new site to Webmaster. Do not use it to check ownership; call verify-host, then start-verification. Do not use it to remove a site; call delete-host, which is irreversible and requires confirm."
+    },
+    {
+      "name": "verify-host",
+      "description": "Get verification status and available verification methods for a host. Use after add-host to check what verification is needed. Use when the user wants the current verification state, the UIN, or which methods are available. Do not use it to start the check; call start-verification. Do not use it to add the site; call add-host."
+    },
+    {
+      "name": "start-verification",
+      "description": "Start the Yandex Webmaster ownership check for a host. Put the verification_uin (see verify-host) on the site first: HTML_FILE — file yandex_<uin>.html, META_TAG — <meta name=\"yandex-verification\">, DNS — TXT record. The check runs asynchronously: the call returns the current state (usually IN_PROGRESS); poll verify-host for VERIFIED or VERIFICATION_FAILED (reason in fail_info). Use when the verification file, meta tag, or DNS record is already in place and the user wants the ownership check started. Do not use it to read the UIN or the failure reason; call verify-host. Do not use it to add the host; call add-host."
+    },
+    {
+      "name": "delete-host",
+      "description": "Remove a host (site) from Yandex Webmaster. IRREVERSIBLE: verification, indexing and search-query history, sitemaps and important-URL settings are lost permanently; re-adding the site starts from scratch. Requires `confirm: true` — without it the tool refuses and calls nothing. Use when the user has explicitly asked to remove a site from Webmaster and accepts that its history is lost. Do not use it to add a site; call add-host. Do not use it to drop one URL from search; this tool deletes the whole host."
+    }
+  ]
+}

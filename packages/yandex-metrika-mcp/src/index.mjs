@@ -5,6 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { CONFIRM_PARAM_DESCRIPTION, createDeleteCounterHandler } from './confirm.mjs';
 import { scopeHint, WRITE_SCOPE } from './scopes.mjs';
+import { applyToolSurface } from './tool-surface.mjs';
 
 const command = process.argv[2];
 if (command === 'auth') {
@@ -539,6 +540,8 @@ async function runServer() {
       };
     },
   );
+
+  applyToolSurface(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

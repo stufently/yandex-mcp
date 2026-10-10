@@ -2,6 +2,7 @@ node_modules/
 tmp/
 .env
 dist/
+dist-mcpb/
 build/
 *.log
 .DS_Store
