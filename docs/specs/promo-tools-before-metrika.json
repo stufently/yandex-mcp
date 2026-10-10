@@ -1,0 +1,284 @@
+[
+  {
+    "name": "get-counters",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "get-counter",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-goals",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "create-counter",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Counter name"
+        },
+        "site": {
+          "type": "string",
+          "description": "Site domain (e.g. \"example.com\")"
+        },
+        "mirrors": {
+          "description": "Mirror domains",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "time_zone_name": {
+          "description": "Timezone (e.g. \"Europe/Moscow\")",
+          "type": "string"
+        },
+        "gdpr_agreement_accepted": {
+          "description": "GDPR agreement accepted (required for EU)",
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "site"]
+    }
+  },
+  {
+    "name": "delete-counter",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually delete. Omit it (or pass false) and the tool refuses without calling the Metrika API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-traffic-summary",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "date_from": {
+          "description": "Start date YYYY-MM-DD",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "End date YYYY-MM-DD",
+          "type": "string"
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-traffic-sources",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max results (default: 10)",
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-geography",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max results (default: 10)",
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-devices",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "group_by": {
+          "description": "Group by (default: device)",
+          "type": "string",
+          "enum": ["device", "browser", "os"]
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max results (default: 10)",
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-popular-pages",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max results (default: 10)",
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-search-phrases",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max results (default: 20)",
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": ["counter_id"]
+    }
+  },
+  {
+    "name": "get-report",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "counter_id": {
+          "type": "number",
+          "description": "Counter ID"
+        },
+        "metrics": {
+          "type": "string",
+          "description": "Comma-separated metrics (e.g. \"ym:s:visits,ym:s:users\")"
+        },
+        "dimensions": {
+          "description": "Comma-separated dimensions",
+          "type": "string"
+        },
+        "date_from": {
+          "description": "Start date YYYY-MM-DD",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "End date YYYY-MM-DD",
+          "type": "string"
+        },
+        "filters": {
+          "description": "Filter expression (e.g. \"ym:s:trafficSource=='organic'\")",
+          "type": "string"
+        },
+        "sort": {
+          "description": "Sort field (prefix with - for DESC)",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max results (default: 10)",
+          "type": "number",
+          "minimum": 1
+        }
+      },
+      "required": ["counter_id", "metrics"]
+    }
+  }
+]

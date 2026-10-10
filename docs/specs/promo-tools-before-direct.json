@@ -1,0 +1,1069 @@
+[
+  {
+    "name": "get_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by campaign IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "States": {
+          "description": "Filter by states: CONVERTED, ENDED, OFF, ON, SUSPENDED, ARCHIVED",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Statuses": {
+          "description": "Filter by statuses: ACCEPTED, DRAFT, MODERATION, REJECTED",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Types": {
+          "description": "Filter by types: TEXT_CAMPAIGN, DYNAMIC_TEXT_CAMPAIGN, MOBILE_APP_CAMPAIGN, CPM_BANNER_CAMPAIGN, SMART_CAMPAIGN, UNIFIED_CAMPAIGN",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of campaign objects, e.g. [{\"Name\":\"My Campaign\",\"StartDate\":\"2024-01-01\",\"TextCampaign\":{\"BiddingStrategy\":{\"Search\":{\"BiddingStrategyType\":\"WB_MAXIMUM_CLICKS\",\"WbMaximumClicks\":{\"WeeklySpendLimit\":300000000}},\"Network\":{\"BiddingStrategyType\":\"SERVING_OFF\"}}}}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "update_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of campaign objects with Id, e.g. [{\"Id\":12345,\"Name\":\"Updated Name\"}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "delete_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "archive_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "unarchive_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "suspend_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "resume_campaigns",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "get_adgroups",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by ad group IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "CampaignIds": {
+          "description": "Filter by campaign IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_adgroups",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of ad group objects, e.g. [{\"Name\":\"My Group\",\"CampaignId\":12345,\"RegionIds\":[225]}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "update_adgroups",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of ad group objects with Id, e.g. [{\"Id\":67890,\"Name\":\"Updated Group\"}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "delete_adgroups",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "archive_adgroups",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "unarchive_adgroups",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "get_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by ad IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "AdGroupIds": {
+          "description": "Filter by ad group IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "CampaignIds": {
+          "description": "Filter by campaign IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "States": {
+          "description": "Filter by states: OFF, ON, SUSPENDED, OFF_BY_MONITORING, ARCHIVED",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Statuses": {
+          "description": "Filter by statuses: ACCEPTED, DRAFT, MODERATION, PREACCEPTED, REJECTED",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of ad objects, e.g. [{\"AdGroupId\":67890,\"TextAd\":{\"Title\":\"My Ad\",\"Title2\":\"Subtitle\",\"Text\":\"Ad body text\",\"Href\":\"https://example.com\",\"Mobile\":\"NO\"}}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "update_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of ad objects with Id, e.g. [{\"Id\":11111,\"TextAd\":{\"Title\":\"Updated Title\"}}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "delete_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "archive_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "unarchive_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "moderate_ads",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "get_keywords",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by keyword IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "AdGroupIds": {
+          "description": "Filter by ad group IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "CampaignIds": {
+          "description": "Filter by campaign IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_keywords",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of keyword objects, e.g. [{\"Keyword\":\"buy flowers\",\"AdGroupId\":67890}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "update_keywords",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of keyword objects with Id, e.g. [{\"Id\":22222,\"Keyword\":\"updated keyword text\"}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "delete_keywords",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "suspend_keywords",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "resume_keywords",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to act on"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "get_keyword_bids",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "KeywordIds": {
+          "description": "Filter by keyword IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "AdGroupIds": {
+          "description": "Filter by ad group IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "CampaignIds": {
+          "description": "Filter by campaign IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "set_keyword_bids",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "bids_json": {
+          "type": "string",
+          "description": "JSON array of bid objects, e.g. [{\"KeywordId\":12345,\"SearchBid\":30000000,\"NetworkBid\":10000000}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["bids_json"]
+    }
+  },
+  {
+    "name": "set_auto_keyword_bids",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "bids_json": {
+          "type": "string",
+          "description": "JSON array of auto-bid setting objects, e.g. [{\"CampaignId\":123,\"AdGroupId\":456,\"MaxBid\":50000000}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["bids_json"]
+    }
+  },
+  {
+    "name": "get_bid_modifiers",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by bid modifier IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "CampaignIds": {
+          "description": "Filter by campaign IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "AdGroupIds": {
+          "description": "Filter by ad group IDs",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Types": {
+          "description": "Filter by types: MOBILE_ADJUSTMENT, DESKTOP_ADJUSTMENT, DEMOGRAPHICS_ADJUSTMENT, RETARGETING_ADJUSTMENT, REGIONAL_ADJUSTMENT, VIDEO_ADJUSTMENT, SMART_AD_ADJUSTMENT, INCOME_GRADE_ADJUSTMENT",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Levels": {
+          "description": "Filter by levels: CAMPAIGN, AD_GROUP",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_bid_modifiers",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of bid modifier objects, e.g. [{\"CampaignId\":12345,\"MobileAdjustment\":{\"BidModifier\":50}}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "set_bid_modifiers",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "modifiers_json": {
+          "type": "string",
+          "description": "JSON array of bid modifier update objects, e.g. [{\"Id\":11111,\"BidModifier\":120}]"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["modifiers_json"]
+    }
+  },
+  {
+    "name": "delete_bid_modifiers",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "get_sitelinks",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by sitelink set IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_sitelinks",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of sitelink set objects, e.g. [{\"Sitelinks\":[{\"Title\":\"About\",\"Href\":\"https://example.com/about\"},{\"Title\":\"Contacts\",\"Href\":\"https://example.com/contacts\"}]}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "delete_sitelinks",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "get_vcards",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return (FieldNames). See tool description for common values."
+        },
+        "Ids": {
+          "description": "Filter by VCard IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "limit": {
+          "description": "Page limit (default 100, max 10000)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "offset": {
+          "description": "Page offset (default 0)",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["field_names"]
+    }
+  },
+  {
+    "name": "add_vcards",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "items_json": {
+          "type": "string",
+          "description": "JSON array of VCard objects, e.g. [{\"CampaignId\":12345,\"Country\":\"Россия\",\"City\":\"Москва\",\"CompanyName\":\"My Company\",\"WorkTime\":\"0;6;9;0;18;0\",\"Phone\":{\"CountryCode\":\"+7\",\"CityCode\":\"495\",\"PhoneNumber\":\"1234567\"}}]"
+        }
+      },
+      "required": ["items_json"]
+    }
+  },
+  {
+    "name": "delete_vcards",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Array of entity IDs to delete"
+        },
+        "confirm": {
+          "description": "Must be exactly true to actually apply this change. Omit it (or pass false) and the tool refuses without calling the Direct API.",
+          "type": "boolean"
+        }
+      },
+      "required": ["ids"]
+    }
+  },
+  {
+    "name": "create_report",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "report_type": {
+          "type": "string",
+          "enum": [
+            "ACCOUNT_PERFORMANCE_REPORT",
+            "AD_PERFORMANCE_REPORT",
+            "ADGROUP_PERFORMANCE_REPORT",
+            "CAMPAIGN_PERFORMANCE_REPORT",
+            "CRITERIA_PERFORMANCE_REPORT",
+            "CUSTOM_REPORT",
+            "REACH_AND_FREQUENCY_PERFORMANCE_REPORT",
+            "SEARCH_QUERY_PERFORMANCE_REPORT"
+          ],
+          "description": "Report type"
+        },
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Columns to include. Common: Date, CampaignName, CampaignId, AdGroupName, AdGroupId, AdId, Impressions, Clicks, Cost, Ctr, AvgCpc, AvgImpressionPosition, AvgClickPosition, BounceRate, AvgPageviews, ConversionRate, CostPerConversion, Conversions, Device, Age, Gender, Query, Criterion, CriterionType, Slot"
+        },
+        "date_range_type": {
+          "type": "string",
+          "enum": [
+            "TODAY",
+            "YESTERDAY",
+            "THIS_MONTH",
+            "LAST_MONTH",
+            "THIS_QUARTER",
+            "LAST_QUARTER",
+            "THIS_YEAR",
+            "LAST_YEAR",
+            "ALL_TIME",
+            "CUSTOM_DATE",
+            "LAST_3_DAYS",
+            "LAST_5_DAYS",
+            "LAST_7_DAYS",
+            "LAST_14_DAYS",
+            "LAST_30_DAYS",
+            "LAST_90_DAYS",
+            "LAST_365_DAYS",
+            "AUTO"
+          ],
+          "description": "Date range type. Use CUSTOM_DATE with date_from/date_to."
+        },
+        "date_from": {
+          "description": "Start date YYYY-MM-DD (required when date_range_type=CUSTOM_DATE)",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "End date YYYY-MM-DD (required when date_range_type=CUSTOM_DATE)",
+          "type": "string"
+        },
+        "filter_json": {
+          "description": "Optional filter as JSON array, e.g. [{\"Field\":\"CampaignId\",\"Operator\":\"EQUALS\",\"Values\":[\"12345\"]}]. Operators: EQUALS, NOT_EQUALS, IN, NOT_IN, LESS_THAN, GREATER_THAN, STARTS_WITH_IGNORE_CASE, DOES_NOT_START_WITH_IGNORE_CASE, STARTS_WITH_ANY_IGNORE_CASE, DOES_NOT_START_WITH_ALL_IGNORE_CASE",
+          "type": "string"
+        },
+        "include_vat": {
+          "description": "Include VAT in money values (default: true)",
+          "type": "boolean"
+        }
+      },
+      "required": ["report_type", "field_names", "date_range_type"]
+    }
+  },
+  {
+    "name": "get_dictionaries",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "dictionary_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Currencies",
+              "MetroStations",
+              "GeoRegions",
+              "TimeZones",
+              "Constants",
+              "Categories",
+              "OperationSystemVersions",
+              "InterestCategories",
+              "Interests",
+              "AudienceInterests"
+            ]
+          },
+          "description": "Array of dictionary names to retrieve"
+        }
+      },
+      "required": ["dictionary_names"]
+    }
+  },
+  {
+    "name": "get_clients",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields to return, e.g. [\"Login\",\"ClientId\",\"ClientInfo\",\"Currency\"]"
+        }
+      },
+      "required": ["field_names"]
+    }
+  }
+]

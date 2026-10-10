@@ -1,0 +1,36 @@
+[
+  {
+    "name": "search",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query text"
+        },
+        "maxResults": {
+          "description": "Maximum results to return (default: 10)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "region": {
+          "description": "Yandex region ID",
+          "type": "number"
+        },
+        "page": {
+          "description": "Page number (0-based, default: 0)",
+          "type": "number",
+          "minimum": 0
+        },
+        "familyMode": {
+          "description": "Safe search filter",
+          "type": "string",
+          "enum": ["FAMILY_MODE_NONE", "FAMILY_MODE_MODERATE", "FAMILY_MODE_STRICT"]
+        }
+      },
+      "required": ["query"]
+    }
+  }
+]

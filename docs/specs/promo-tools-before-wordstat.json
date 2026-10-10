@@ -1,0 +1,152 @@
+[
+  {
+    "name": "get-regions-tree",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "depth": {
+          "description": "Maximum tree depth (default: 3)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    }
+  },
+  {
+    "name": "get-region-children",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "regionId": {
+          "type": "number",
+          "description": "Region ID to get children for"
+        },
+        "depth": {
+          "description": "Maximum subtree depth (default: 2)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3
+        }
+      },
+      "required": ["regionId"]
+    }
+  },
+  {
+    "name": "top-requests",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "phrase": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Keyword or phrase to search for"
+        },
+        "regions": {
+          "description": "Region IDs to filter by",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "devices": {
+          "description": "Device types to filter by",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["desktop", "phone", "tablet"]
+          }
+        },
+        "limit": {
+          "description": "Max phrases in response (default: 100)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2000
+        }
+      },
+      "required": ["phrase"]
+    }
+  },
+  {
+    "name": "dynamics",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "phrase": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Keyword or phrase"
+        },
+        "period": {
+          "description": "Aggregation period (default: monthly)",
+          "type": "string",
+          "enum": ["daily", "weekly", "monthly"]
+        },
+        "fromDate": {
+          "description": "Start date YYYY-MM-DD (snapped to a valid window boundary)",
+          "type": "string"
+        },
+        "toDate": {
+          "description": "End date YYYY-MM-DD (snapped to a valid window boundary)",
+          "type": "string"
+        },
+        "regions": {
+          "description": "Region IDs",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "devices": {
+          "description": "Device types",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["desktop", "phone", "tablet"]
+          }
+        }
+      },
+      "required": ["phrase"]
+    }
+  },
+  {
+    "name": "regions",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "phrase": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Keyword or phrase"
+        },
+        "regions": {
+          "description": "Region IDs to filter (client-side, with descendants)",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "devices": {
+          "description": "Device types",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["desktop", "phone", "tablet"]
+          }
+        },
+        "limit": {
+          "description": "Max results (default: 20)",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": ["phrase"]
+    }
+  }
+]
