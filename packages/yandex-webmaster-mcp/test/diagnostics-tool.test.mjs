@@ -49,3 +49,18 @@ test('get-diagnostics не режет текст по символам: все 3
     );
   }
 });
+
+test('get-diagnostics отдаёт в structuredContent весь ответ API, не только problems', async () => {
+  const body = {
+    problems: {
+      SAMPLE: {
+        severity: 'FATAL',
+        state: 'PRESENT',
+        last_state_update: '2026-10-10T00:00:00.000+03:00',
+      },
+    },
+    server_time: '2026-10-10',
+  };
+  const result = await callTool(PKG, 'get-diagnostics', { host_id: HOST }, [USER, { match: '/diagnostics', body }]);
+  assert.deepEqual(result.structuredContent, body);
+});

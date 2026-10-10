@@ -147,3 +147,26 @@ test('нет problems в ответе — «no data», а не ноль проб
     assert.match(text, /^Diagnostics: no data \(response has no problems\)\.$/, `вход: ${JSON.stringify(data)}`);
   }
 });
+
+test('коды внутри степени сравниваются по кодовым точкам: AA раньше A_B', () => {
+  const data = {
+    problems: Object.fromEntries([present('A_B', 'FATAL'), present('AA', 'FATAL')]),
+  };
+  assert.deepEqual(entryLines(formatDiagnostics(data)), [
+    '- AA [FATAL] since 2026-10-01',
+    '- A_B [FATAL] since 2026-10-01',
+  ]);
+});
+
+test('строка даты без префикса YYYY-MM-DD печатается целиком', () => {
+  const data = {
+    problems: Object.fromEntries([present('ODD_DATE', 'FATAL', 'not-a-date-with-extra-text')]),
+  };
+  assert.deepEqual(entryLines(formatDiagnostics(data)), ['- ODD_DATE [FATAL] since not-a-date-with-extra-text']);
+});
+
+test('запись без state считается в Other states как N/A', () => {
+  const text = formatDiagnostics({ problems: { NO_STATE: { severity: 'FATAL' } } });
+  assert.equal(entryLines(text).length, 0);
+  assert.match(text, /^Other states: N\/A=1$/m);
+});
