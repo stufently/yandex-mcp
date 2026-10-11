@@ -188,6 +188,13 @@ the extension and asks for the token. Each server is its own file (`yandex-searc
 That path works before the npm packages are published. `YANDEX_DIRECT_SANDBOX` set to `true`
 points Direct at the sandbox; leave it false for real campaigns. Restart the app after a manual edit.
 
+Each release includes `checksums.txt` with the SHA256 checksum of every `.mcpb` bundle.
+Download it alongside your bundle and verify the download before opening it:
+
+```bash
+sha256sum -c --ignore-missing checksums.txt   # run next to the downloaded .mcpb
+```
+
 ### Cursor
 
 File: `~/.cursor/mcp.json` (all projects) or `.cursor/mcp.json` (one project).
