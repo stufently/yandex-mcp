@@ -24,7 +24,7 @@
 | Файл | sha256 |
 |---|---|
 | `docs/specs/mcpb-checksums.md` | эта спека |
-| `docs/specs/mcpb-checksums-probe.sh` | `1c107c1a8e0d14f2ca64704f0a3586b23c4271015a05032e156427956d19c288` |
+| `docs/specs/mcpb-checksums-probe.sh` | `9074206f51684ea9f10ceb55b38133df5d0f0bb7083e9b5c718f378639035596` |
 | `docs/specs/mcpb-checksums-wiring.py` | `3fe4e1bfc7fea575553eb24865031501a4e351f51f3e7f3d8d3eb700597d146b` |
 
 Зависимости ставить не нужно: критериям нужны `bash`, `sha256sum`, `python3` (stdlib) на
@@ -65,7 +65,7 @@ Docker — только с `-u 1002:1002`.
   `## YYYY-MM-DD — <заголовок>`.
 - `actionlint` 1.7.12 (последний релиз rhysd/actionlint на 11.10.2026) на HEAD клона: rc=0 —
   исходное состояние зелёное.
-- Пробник `mcpb-checksums-probe.sh` прогнан постановщиком: на эталонной реализации
+- Пробник `mcpb-checksums-probe.sh` (v2, 11.10.2026: усилен после мутационного прогона на zabbix — порядок и полнота чужих строк, последняя строка без LF, порядок `LC_ALL=C`, провал внутреннего `sha256sum -c`, `\`-строки) прогнан постановщиком: на эталонной реализации
   `PROBE PASSED`, rc=0; на семи уклончивых реализациях (no-op; полные пути вместо имён;
   перезапись без сохранения чужих строк; дописывание без удаления старых строк `.mcpb`;
   суммы всех файлов каталога; rc=0 на пустом каталоге; sha1 вместо sha256) — rc=1 каждый.
@@ -95,6 +95,12 @@ bash scripts/mcpb-checksums.sh DIR SUMS
   отсортированные по имени (`LC_ALL=C`), в текстовом формате `sha256sum`:
   `<64 строчных hex><два пробела><имя файла без каталога>`. Повторный запуск даёт
   побайтно тот же файл (старые строки `.mcpb` заменяются, а не дублируются).
+- Строкой `.mcpb` считается и строка GNU-формата с ведущей обратной косой
+  (`\<64 hex>  <имя>`, так `sha256sum` пишет имя с `\` или переводом строки): она тоже
+  заменяется, а не дублируется. Строки goreleaser сохраняются в исходном порядке байт
+  в байт, включая последнюю строку без завершающего перевода строки.
+- Внутренняя проверка `sha256sum -c` провалилась → rc≠0, и прежний `SUMS` остаётся
+  нетронутым (сначала проверка временного файла, потом `mv`).
 - После записи скрипт сам проверяет строки `.mcpb` через `sha256sum -c` из `DIR` и при
   расхождении выходит с ≠ 0.
 - Запись атомарная (временный файл рядом + `mv`), stdin не читать, `set -euo pipefail`,
@@ -156,7 +162,7 @@ sha256sum -c --ignore-missing checksums.txt   # run next to the downloaded .mcpb
 - **AC-001.** Скрипт сумм на имитации каталога релиза с фиктивными бандлами: суммы верны,
   проверка sha256sum -c проходит, чужие строки сохранены, повтор идемпотентен, пустой каталог —
   ошибка. Пробник постановщика, его sha256 вшит:
-  `bash -c 'echo "1c107c1a8e0d14f2ca64704f0a3586b23c4271015a05032e156427956d19c288  docs/specs/mcpb-checksums-probe.sh" | sha256sum -c - && bash docs/specs/mcpb-checksums-probe.sh scripts/mcpb-checksums.sh'`
+  `bash -c 'echo "9074206f51684ea9f10ceb55b38133df5d0f0bb7083e9b5c718f378639035596  docs/specs/mcpb-checksums-probe.sh" | sha256sum -c - && bash docs/specs/mcpb-checksums-probe.sh scripts/mcpb-checksums.sh'`
 - **AC-002.** Workflow вызывает скрипт после сборки и прикладывает файл к релизу (порядок
   шагов проверяется, строки-комментарии не считаются):
   `bash -c 'echo "3fe4e1bfc7fea575553eb24865031501a4e351f51f3e7f3d8d3eb700597d146b  docs/specs/mcpb-checksums-wiring.py" | sha256sum -c - && python3 docs/specs/mcpb-checksums-wiring.py .github/workflows/mcpb.yml "bash scripts/build-mcpb.sh" "bash scripts/mcpb-checksums.sh dist-mcpb dist-mcpb/checksums.txt" "dist-mcpb/checksums.txt --clobber"'`
