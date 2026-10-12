@@ -22,12 +22,13 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  image:
-    name: Build, smoke-test and publish image
+  # Runs for every event and holds no write token: the smoke test executes code
+  # from the checkout, so it must not run next to a GHCR push credential.
+  build:
+    name: Build and smoke-test image
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
 
     steps:
       - name: Checkout
@@ -38,8 +39,8 @@ jobs:
         with:
           node-version: "24"
 
-      # Third-party actions are pinned by commit SHA — `vN` tags are mutable and
-      # this job holds a GHCR push token. Each SHA pins the full release tag below.
+      # Third-party actions are pinned by commit SHA — `vN` tags are mutable.
+      # Each SHA pins the full release tag in the comment.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -60,8 +61,24 @@ jobs:
           DOCKER_SMOKE_USER: "1002:1002"
         run: node scripts/docker-smoke.mjs yandex-mcp:ci
 
+  # Only a version tag gets `packages: write`, and only after the smoke test passed.
+  publish:
+    name: Publish image to GHCR
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
       - name: Log in to GitHub Container Registry
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -69,7 +86,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
-        if: startsWith(github.ref, 'refs/tags/v')
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
@@ -80,8 +96,8 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-,format=short
 
+      # Same Dockerfile and build cache as the smoke-tested build above.
       - name: Push image
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .

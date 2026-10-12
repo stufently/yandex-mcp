@@ -5,7 +5,7 @@
 ### Added
 - `Dockerfile` в корне: один образ на все пять серверов, первый аргумент выбирает сервер (`search|wordstat|webmaster|metrika|direct`, по умолчанию `webmaster`), остальное уходит серверу (`webmaster auth`). Multi-stage: зависимости ставит `oven/bun:1.4.3-alpine` по `bun.lock` с `--production` (Biome в образ не попадает), рантайм — `node:24.21.0-alpine` (актуальный LTS), пользователь `node`, файлы только на чтение независимо от umask чекаута.
 - `scripts/docker-smoke.mjs`: поднимает из образа каждый сервер и CMD по умолчанию БЕЗ токенов и без сети, проверяет ответ `initialize` (имя сервера) и `tools/list` (минимум тулов). Так образ проверяет и Glama.
-- `.github/workflows/docker.yml`: на PR и main — сборка и smoke-тест под чужим uid; на теге `v*.*.*` — публикация `ghcr.io/stufently/yandex-mcp` (теги версии, `major.minor`, `major`, `sha-…`, `latest`). Сторонние экшены запинены по SHA. С `publish.yml`/`registry.yml`/`mcpb.yml` не пересекается: `server.json` остаются npm-only.
+- `.github/workflows/docker.yml`: на PR и main — сборка и smoke-тест под чужим uid (джоба без write-токена); на теге `v*.*.*` отдельная джоба после smoke-теста публикует `ghcr.io/stufently/yandex-mcp` (теги версии, `major.minor`, `major`, `sha-…`, `latest`). Сторонние экшены запинены по SHA. С `publish.yml`/`registry.yml`/`mcpb.yml` не пересекается: `server.json` остаются npm-only.
 - README: раздел Docker (образ появится с ближайшим релизом).
 
 ### Changed
