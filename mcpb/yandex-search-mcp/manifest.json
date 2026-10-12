@@ -3,7 +3,7 @@
   "name": "yandex-search-mcp",
   "display_name": "Yandex Search",
   "description": "Search the web with the Yandex Search API.",
-  "long_description": "Returns ranked Yandex web results with titles, snippets, and URLs. Read-only. To run it you need a Yandex Cloud API key and a folder id; the server refuses to start without both.",
+  "long_description": "Returns ranked Yandex web results with titles, snippets, and URLs. Read-only. To run it you need a Yandex Cloud API key and a folder id; without them the server starts, and the search call reports which one is missing.",
   "author": {
     "name": "stufently"
   },

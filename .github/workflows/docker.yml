@@ -1,0 +1,91 @@
+name: Docker
+
+# One image for all five servers (see the Dockerfile), ghcr.io/stufently/yandex-mcp.
+# Pull requests and main only build it and run every server from it over stdio
+# without credentials; a version tag (v*.*.*) also pushes it. Runs next to
+# publish.yml and mcpb.yml on the same tag and shares nothing with them: the
+# registry entries (server.json) stay npm-only, so the image is not part of
+# the MCP Registry publication.
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  image:
+    name: Build, smoke-test and publish image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # Third-party actions are pinned by commit SHA — `vN` tags are mutable and
+      # this job holds a GHCR push token. Each SHA pins the full release tag below.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build image for the smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: yandex-mcp:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Every server, plus the default CMD, must answer initialize and tools/list
+      # with no token in the container — that is what Glama's introspection does.
+      # A uid other than the image's own `node` user proves the files are readable.
+      - name: Smoke test every server in the image
+        env:
+          DOCKER_SMOKE_USER: "1002:1002"
+        run: node scripts/docker-smoke.mjs yandex-mcp:ci
+
+      - name: Log in to GitHub Container Registry
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Push image
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha

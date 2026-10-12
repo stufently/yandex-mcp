@@ -11,16 +11,7 @@
  * Плумбинг вынесен в `lib/list-tools.mjs` — им же пользуются тесты разрушительных тулов.
  */
 import { listTools } from './lib/list-tools.mjs';
-
-// Минимум тулов, который сервер обязан отдать. Ловит и «пакет не грузится»,
-// и «половина тулов отвалилась при рефакторинге».
-const PACKAGES = [
-  ['yandex-search-mcp', 1],
-  ['yandex-wordstat-mcp', 5],
-  ['yandex-webmaster-mcp', 25],
-  ['yandex-metrika-mcp', 10],
-  ['yandex-direct-mcp', 30],
-];
+import { SERVERS as PACKAGES } from './lib/servers.mjs';
 
 let failed = 0;
 for (const [pkg, minTools] of PACKAGES) {

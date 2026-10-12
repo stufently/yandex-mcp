@@ -9,10 +9,16 @@ import { createToolRegistrar } from './tool-surface.mjs';
 await runServer();
 
 async function runServer() {
-  const apiKey = process.env.YANDEX_SEARCH_API_KEY;
-  const folderId = process.env.YANDEX_FOLDER_ID;
-  if (!apiKey) throw new Error('YANDEX_SEARCH_API_KEY is required. Get it from https://console.yandex.cloud/');
-  if (!folderId) throw new Error('YANDEX_FOLDER_ID is required. Get it from https://console.yandex.cloud/');
+  // Credentials are checked on the first call, not at startup, like in the other
+  // four servers: a client (or a registry's introspection) must be able to start
+  // the server and list its tools before any key is configured.
+  function getCreds() {
+    const apiKey = process.env.YANDEX_SEARCH_API_KEY;
+    const folderId = process.env.YANDEX_FOLDER_ID;
+    if (!apiKey) throw new Error('YANDEX_SEARCH_API_KEY is required. Get it from https://console.yandex.cloud/');
+    if (!folderId) throw new Error('YANDEX_FOLDER_ID is required. Get it from https://console.yandex.cloud/');
+    return { apiKey, folderId };
+  }
 
   // --- Shared utilities ---
 
@@ -97,6 +103,7 @@ async function runServer() {
         .describe('Safe search filter'),
     },
     async ({ query, maxResults = 10, region, page = 0, familyMode = 'FAMILY_MODE_MODERATE' }) => {
+      const { apiKey, folderId } = getCreds();
       const lang = detectLanguage(query);
       const searchType = searchTypeMap[lang] || 'SEARCH_TYPE_RU';
       const l10n = l10nMap[lang] || 'LOCALIZATION_RU';

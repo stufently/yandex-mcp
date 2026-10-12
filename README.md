@@ -49,9 +49,8 @@ YANDEX_WEBMASTER_TOKEN=your-oauth-token npx -y @stufently/yandex-webmaster-mcp
 > until it prints a version. Every block below then works unchanged once you swap the `npx` command for `node` —
 > see [From source](#from-source).
 
-Wordstat, Webmaster, Metrika and Direct start without their variables and fail only on the
-first tool call. **Search refuses to start** without `YANDEX_SEARCH_API_KEY` and
-`YANDEX_FOLDER_ID`, so a client shows it as failed until both are set.
+All five servers start without their variables and fail only on the first tool call, with an
+error that names the missing variable.
 
 Append a version (`@stufently/yandex-webmaster-mcp@2.2.0`) to pin it instead of taking the
 latest release on every start. The OAuth helper runs the same way:
@@ -447,6 +446,42 @@ tokens yourself, either by exporting them in your shell or by putting them in
 Servers whose variables are missing simply fail on first use; the rest keep working, so you can
 install the plugin and set up one API at a time.
 
+### Docker
+
+> The image `ghcr.io/stufently/yandex-mcp` is published with the next release tag; until then,
+> build it from a clone with `docker build -t yandex-mcp .`.
+
+One image holds all five servers. The first argument picks the server — `search`, `wordstat`,
+`webmaster` (the default), `metrika` or `direct` — and anything after it goes to the server.
+Keep `-i` (MCP talks over stdin) and pass the tokens with `-e`:
+
+```bash
+docker run -i --rm -e YANDEX_WEBMASTER_TOKEN ghcr.io/stufently/yandex-mcp webmaster
+docker run -i --rm -e YANDEX_DIRECT_TOKEN ghcr.io/stufently/yandex-mcp direct
+```
+
+In a client config, Docker replaces `npx`. For example, Metrika in Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "yandex-metrika": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "YANDEX_METRIKA_TOKEN", "ghcr.io/stufently/yandex-mcp", "metrika"],
+      "env": { "YANDEX_METRIKA_TOKEN": "your-oauth-token" }
+    }
+  }
+}
+```
+
+`-e NAME` without a value forwards the variable from the client's environment, so the token
+stays out of `args`. The image runs as the unprivileged `node` user, and the entrypoint
+`exec`s the server, so `docker stop` reaches Node directly. The Wordstat fallback file
+`~/.config/yandex-cloud/wordstat.env` is not visible inside the container — pass
+`WORDSTAT_API_KEY` and `WORDSTAT_FOLDER_ID` with `-e`. The OAuth helper prints a link and
+reads the code from stdin, so it works too: `docker run -it --rm -e YANDEX_CLIENT_ID -e
+YANDEX_CLIENT_SECRET ghcr.io/stufently/yandex-mcp webmaster auth`.
+
 ### From source
 
 Needs Node.js >= 22 and [Bun](https://bun.sh/) on your `PATH` (the plugin needs Bun too: the
@@ -628,6 +663,9 @@ bun run test
 
 # Smoke test: start every server over stdio and query tools/list
 bun run smoke
+
+# The same from the Docker image, with no credentials in the container
+docker build -t yandex-mcp:local . && node scripts/docker-smoke.mjs yandex-mcp:local
 ```
 
 ### Tech Stack
@@ -649,6 +687,8 @@ packages/
   yandex-metrika-mcp/      # 12 tools - Web analytics
   yandex-direct-mcp/       # 43 tools - Ad campaigns
 scripts/smoke-tools.mjs    # Starts every server and checks tools/list
+scripts/docker-smoke.mjs   # Same check against the Docker image, without credentials
+Dockerfile                 # One image for all five servers (docker/entrypoint.sh picks one)
 .claude/skills/            # Claude Code skills (shipped with the plugin)
 .mcp.json                  # Local dev config
 plugin.mcp.json            # Distribution config — the 5 servers the plugin registers

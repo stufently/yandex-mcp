@@ -41,9 +41,29 @@ function request(id, method, params) {
  * @param {{timeoutMs?: number, clientName?: string}} [options]
  * @returns {Promise<Array<Record<string, unknown>>>}
  */
-export async function listTools(pkg, { timeoutMs = DEFAULT_TIMEOUT_MS, clientName = 'list-tools' } = {}) {
-  const child = spawn(process.execPath, [join(ROOT, 'packages', pkg, 'src', 'index.mjs')], {
-    env: { ...process.env, ...FAKE_ENV },
+export async function listTools(pkg, options = {}) {
+  const { tools } = await handshake(pkg, options);
+  return tools;
+}
+
+/**
+ * Same handshake, but also returns the `initialize` result.
+ *
+ * `command` replaces the default `node packages/<pkg>/src/index.mjs` — the
+ * Docker smoke test passes `docker run -i …` here. The fake credentials are
+ * only set for the default command: a spawned `docker` does not forward its
+ * environment into the container, and the image is meant to start without any.
+ * `env` replaces the child's whole environment, e.g. to start a server with no
+ * credentials at all.
+ *
+ * @param {string} pkg directory name under `packages/`, used for the default command
+ * @param {{timeoutMs?: number, clientName?: string, command?: string[], env?: Record<string, string>}} [options]
+ * @returns {Promise<{serverInfo: Record<string, unknown> | undefined, tools: Array<Record<string, unknown>>}>}
+ */
+export async function handshake(pkg, { timeoutMs = DEFAULT_TIMEOUT_MS, clientName = 'list-tools', command, env } = {}) {
+  const [cmd, ...args] = command ?? [process.execPath, join(ROOT, 'packages', pkg, 'src', 'index.mjs')];
+  const child = spawn(cmd, args, {
+    env: env ?? (command ? process.env : { ...process.env, ...FAKE_ENV }),
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -79,6 +99,7 @@ export async function listTools(pkg, { timeoutMs = DEFAULT_TIMEOUT_MS, clientNam
       child.on('exit', (code) => finish(new Error(`exited early with code ${code}; stderr: ${stderr}`)));
 
       child.stdout.on('data', () => {
+        let serverInfo;
         for (const line of stdout.split('\n')) {
           if (!line.trim()) continue;
           let msg;
@@ -87,9 +108,14 @@ export async function listTools(pkg, { timeoutMs = DEFAULT_TIMEOUT_MS, clientNam
           } catch {
             continue;
           }
+          if (msg.id === 1) {
+            if (msg.error) return finish(new Error(`initialize failed: ${JSON.stringify(msg.error)}`));
+            serverInfo = msg.result?.serverInfo;
+            continue;
+          }
           if (msg.id !== 2) continue;
           if (msg.error) finish(new Error(`tools/list failed: ${JSON.stringify(msg.error)}`));
-          else finish(null, msg.result?.tools ?? []);
+          else finish(null, { serverInfo, tools: msg.result?.tools ?? [] });
           return;
         }
       });
