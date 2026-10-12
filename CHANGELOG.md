@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-12 — Provenance-аттестации и таблица проверенных клиентов
+
+### Added
+- Релизный workflow `.mcpb` подписывает build provenance каждого бандла (`actions/attest-build-provenance`); проверка — `gh attestation verify <bundle>.mcpb --repo stufently/yandex-mcp`.
+- README: таблица «Verified clients and platforms» — что реально запускалось, а что только описано.
+
 ## 2026-10-11 — SHA256 для бандлов .mcpb
 
 ### Added
