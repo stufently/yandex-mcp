@@ -60,6 +60,23 @@ latest release on every start. The OAuth helper runs the same way:
 Do not `npx` the **unscoped** names — they belong to a different publisher (see the note
 above).
 
+## Verified clients and platforms
+
+Only what has actually been run is listed as verified. Everything else in
+[Client Configuration](#client-configuration) is a documented config that nobody has
+checked end to end.
+
+| Client / runtime | OS | How it runs | Status | Evidence |
+|---|---|---|---|---|
+| Claude Code 2.1 | Ubuntu 26.04 LTS, x86_64 | Node.js 24 from a checkout, stdio: `yandex-direct`, `yandex-wordstat`, `yandex-webmaster` | Verified | Daily use on the maintainer's host |
+| Codex CLI 0.162 | Ubuntu 26.04 LTS, x86_64 | Node.js 24 from a checkout: `yandex-wordstat`, `yandex-webmaster` | Configured, not checked separately | Maintainer's host config |
+| Node.js 22 + Bun | Ubuntu (`ubuntu-latest`) | Unit tests; all five servers answer `tools/list` over stdio | Verified in CI | `ci.yml` (`node --test`, `scripts/smoke-tools.mjs`) |
+| `yandex-metrika`, `yandex-search` with a real token | any | — | Not verified in a client | CI smoke test only |
+| `npx @stufently/*` from npm | any | — | Not verified | See **Status** above |
+| Claude Desktop (`.mcpb`), Claude Code plugin | any | Desktop Extension, plugin | Not verified | Bundles are built in CI, never installed in a real Desktop or as a plugin |
+| Cursor, Windsurf, Zed | any | Configs below | Not verified | Documented only |
+| macOS, Windows | — | Any client | Not verified | No CI runner on these systems |
+
 ## Client Configuration
 
 Every block registers all five servers; drop the ones you do not need. Values are placeholders —
@@ -193,6 +210,14 @@ Download it alongside your bundle and verify the download before opening it:
 
 ```bash
 sha256sum -c --ignore-missing checksums.txt   # run next to the downloaded .mcpb
+```
+
+Releases from the next tag on also carry a GitHub build provenance attestation for each
+`.mcpb`, signed in the release workflow. Check that a bundle was built by this
+repository's workflow and not swapped afterwards (needs the GitHub CLI):
+
+```bash
+gh attestation verify <bundle>.mcpb --repo stufently/yandex-mcp
 ```
 
 ### Cursor

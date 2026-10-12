@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Sigstore-signed build provenance for the .mcpb files.
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout
@@ -21,6 +24,11 @@ jobs:
 
       - name: Compute SHA256 checksums for the bundles
         run: bash scripts/mcpb-checksums.sh dist-mcpb dist-mcpb/checksums.txt
+
+      - name: Attest build provenance for the bundles
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist-mcpb/*.mcpb
 
       - name: Create the GitHub release when the tag has none
         env:
