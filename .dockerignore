@@ -1,0 +1,18 @@
+# Only the manifests, bun.lock, packages/*/src and the entrypoint reach the image.
+.git
+.github
+.claude
+.claude-plugin
+.env
+.env.*
+**/node_modules
+**/test
+**/*.md
+dist
+dist-mcpb
+build
+mcpb
+docs
+scripts
+tmp
+*.log

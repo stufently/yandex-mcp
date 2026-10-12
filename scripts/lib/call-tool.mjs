@@ -29,15 +29,16 @@ function request(id, method, params) {
  * @param {string} name имя тула
  * @param {Record<string, unknown>} args аргументы вызова
  * @param {{match: string, body?: unknown, status?: number}[]} fixtures ответы вместо сети
- * @param {{timeoutMs?: number}} [options]
+ * @param {{timeoutMs?: number, env?: Record<string, string>}} [options] `env` заменяет креды
+ *   целиком (например, пустые — проверить отказ без ключа); фикстуры подставляются всегда
  * @returns {Promise<{content: {type: string, text?: string}[], structuredContent?: any}>}
  */
-export async function callTool(pkg, name, args, fixtures, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+export async function callTool(pkg, name, args, fixtures, { timeoutMs = DEFAULT_TIMEOUT_MS, env } = {}) {
   const child = spawn(
     process.execPath,
     ['--import', pathToFileURL(STUB).href, join(ROOT, 'packages', pkg, 'src', 'index.mjs')],
     {
-      env: { ...process.env, ...FAKE_ENV, MCP_FETCH_FIXTURES: JSON.stringify(fixtures) },
+      env: { ...(env ?? { ...process.env, ...FAKE_ENV }), MCP_FETCH_FIXTURES: JSON.stringify(fixtures) },
       stdio: ['pipe', 'pipe', 'pipe'],
     },
   );
