@@ -25,8 +25,10 @@ jobs:
       - name: Compute SHA256 checksums for the bundles
         run: bash scripts/mcpb-checksums.sh dist-mcpb dist-mcpb/checksums.txt
 
+      # actions/attest pinned by SHA: attest-build-provenance v4 is only a
+      # wrapper around it with the same inputs.
       - name: Attest build provenance for the bundles
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: dist-mcpb/*.mcpb
 
