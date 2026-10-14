@@ -15,8 +15,14 @@
       `curl -fsS "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.stufently/yandex"`.
       Публиковать из `main`, не из тега: у тега `v2.2.0` в `package.json` нет `mcpName`. Имена без
       скоупа не трогать: `yandex-{search,wordstat,webmaster,metrika}-mcp` принадлежат `altrr2`.
-- [ ] После первого релиза перейти на npm trusted publishing (OIDC) и убрать долгоживущий
-      `NPM_TOKEN` — `id-token: write` в `publish.yml` уже стоит.
+- [ ] Trusted publishing (OIDC) на npmjs.com — `publish.yml` уже без `NPM_TOKEN` (2026-10-14).
+      npm даёт привязать trusted publisher только к СУЩЕСТВУЮЩЕМУ пакету, поэтому сначала
+      ручная публикация пунктом выше. Затем у каждого из пяти пакетов: Settings → Trusted
+      publishing → GitHub Actions: `stufently` / `yandex-mcp` / `publish.yml`, environment пусто,
+      в Allowed actions отметить `npm publish` (новые конфиги по умолчанию разрешают только
+      `npm stage publish`). Конфиг протухает, если за 2 дня не было успешной публикации через
+      него, — заводить прямо перед следующим тегом. После первой OIDC-публикации: Publishing
+      access → «Require two-factor authentication and disallow tokens».
 - [ ] Версия плагина живёт в `.claude-plugin/plugin.json` и закреплена на `1.0.0`; повышать её
       на каждом релизе, иначе установленный плагин не обновится у пользователей.
 - [ ] `YANDEX_DIRECT_TOKEN` недействителен (`error_code 53`) — все 43 тула Директа сейчас
