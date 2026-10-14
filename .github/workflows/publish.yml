@@ -1,9 +1,16 @@
 name: Publish to npm
 
+# Auth is npm trusted publishing (GitHub OIDC): no NPM_TOKEN secret. Each
+# @stufently/yandex-*-mcp package on npmjs.com must list this repo and the
+# workflow file `publish.yml` as its trusted publisher, with `npm publish`
+# allowed. npm attaches provenance automatically on this path.
+# workflow_dispatch publishes the versions in package.json from the chosen ref,
+# e.g. after the trusted publisher is first configured.
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -29,26 +36,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Trusted publishing needs npm >= 11.5.1 and Node >= 22.14.0
+      # (docs.npmjs.com/trusted-publishers). Node 24 ships npm 11.
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
 
-      # Third-party экшен запинен по commit-SHA: эта джоба держит NPM_TOKEN и
-      # публикует пакеты, а тег v2 у апстрима mutable. SHA = то, во что v2
-      # резолвился на 2026-07-25 (релиз v2.2.0), т.е. поведение не меняется.
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - name: Check npm version
+        run: |
+          v=$(npm --version)
+          echo "npm $v"
+          if [ "$(printf '%s\n' 11.5.1 "$v" | sort -V | head -n1)" != 11.5.1 ]; then
+            echo "::error::npm $v is older than 11.5.1, trusted publishing will not work"; exit 1
+          fi
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
+      # The packages ship plain .mjs sources (no build step), so the publish
+      # job installs nothing. A version already on npm (e.g. a first manual
+      # upload) is skipped, so the registry job can still run after it.
       - name: Publish ${{ matrix.package }}
         working-directory: packages/${{ matrix.package }}
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          name=$(jq -r .name package.json)
+          version=$(jq -r .version package.json)
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "https://registry.npmjs.org/${name/\//%2f}/$version")
+          if [ "$code" = "200" ]; then
+            echo "$name@$version is already on npm, skipping"; exit 0
+          fi
+          npm publish --provenance --access public
 
   # Runs once all five packages are on npm: the registry checks each package's
   # mcpName against npm before it accepts the entry.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-14 — npm trusted publishing вместо NPM_TOKEN
+
+### Changed
+- `publish.yml` публикует через npm trusted publishing (GitHub OIDC): `NODE_AUTH_TOKEN`/`NPM_TOKEN` убраны, Node 24 (npm 11.19, нужен >= 11.5.1 — шаг это проверяет), Bun и установка зависимостей из джобы убраны (сборки нет). Версия, уже лежащая в npm, пропускается, чтобы после ручной первой публикации джоба реестра всё равно шла. Добавлен `workflow_dispatch`. Trusted publisher на npmjs.com настраивает владелец, см. `TASKS.md`.
+
 ## 2026-10-12 — Docker-образ для всех пяти серверов
 
 ### Added
