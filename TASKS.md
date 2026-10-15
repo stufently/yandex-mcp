@@ -2,22 +2,9 @@
 
 ## TODO
 
-- [ ] **Опубликовать `v2.2.0` в npm** (за владельцем). Тег `v2.2.0` и GitHub Release
-      поставлены 2026-09-18; тарболлы и `npm publish --dry-run` проверены по всем пяти, имена
-      в реестре свободны. Токена на хосте нет, а в секретах репо нет `NPM_TOKEN` — поэтому
-      `publish.yml` на тег упал на авторизации, это ожидаемо. Публикация — одной командой
-      владельца из корня репо (интерактивный `npm login`, нужен TTY):
-      `docker run --rm -it -u 1002:1002 -e HOME=/tmp -v "$PWD":/w:ro -w /w node:22-alpine sh -c 'npm login && for p in search wordstat webmaster metrika direct; do (cd packages/yandex-$p-mcp && npm publish --access public) || exit 1; done'`
-      Проверка: `npm view @stufently/yandex-webmaster-mcp version` → `2.2.0`. После публикации
-      убрать из README блок **Status** в «Quick start — npx» (он оговаривает, что пакетов в реестре ещё нет)
-      и запустить `gh workflow run registry.yml` — публикация в MCP Registry (`server.json` и `mcpName`
-      готовы; реестр примет запись только после npm). Проверка:
-      `curl -fsS "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.stufently/yandex"`.
-      Публиковать из `main`, не из тега: у тега `v2.2.0` в `package.json` нет `mcpName`. Имена без
-      скоупа не трогать: `yandex-{search,wordstat,webmaster,metrika}-mcp` принадлежат `altrr2`.
 - [ ] Trusted publishing (OIDC) на npmjs.com — `publish.yml` уже без `NPM_TOKEN` (2026-10-14).
-      npm даёт привязать trusted publisher только к СУЩЕСТВУЮЩЕМУ пакету, поэтому сначала
-      ручная публикация пунктом выше. Затем у каждого из пяти пакетов: Settings → Trusted
+      npm даёт привязать trusted publisher только к СУЩЕСТВУЮЩЕМУ пакету, пакеты опубликованы
+      вручную 2026-10-15 (2.2.0, все пять). Затем у каждого из пяти пакетов: Settings → Trusted
       publishing → GitHub Actions: `stufently` / `yandex-mcp` / `publish.yml`, environment пусто,
       в Allowed actions отметить `npm publish` (новые конфиги по умолчанию разрешают только
       `npm stage publish`). Конфиг протухает, если за 2 дня не было успешной публикации через

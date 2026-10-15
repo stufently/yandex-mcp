@@ -43,12 +43,6 @@ YANDEX_WEBMASTER_TOKEN=your-oauth-token npx -y @stufently/yandex-webmaster-mcp
 | Metrika | `npx -y @stufently/yandex-metrika-mcp` | `YANDEX_METRIKA_TOKEN` |
 | Direct | `npx -y @stufently/yandex-direct-mcp` | `YANDEX_DIRECT_TOKEN` (+ optional `YANDEX_DIRECT_CLIENT_LOGIN`, `YANDEX_DIRECT_SANDBOX`) |
 
-> **Status.** v2.2.0 is tagged, and the npm upload is a separate manual step. If
-> `npm view @stufently/yandex-webmaster-mcp version` still answers `E404`, the packages are
-> not on the registry yet: use a [`.mcpb` bundle](#claude-desktop), the [plugin, or a clone](#other-ways-to-install)
-> until it prints a version. Every block below then works unchanged once you swap the `npx` command for `node` —
-> see [From source](#from-source).
-
 All five servers start without their variables and fail only on the first tool call, with an
 error that names the missing variable.
 
@@ -71,7 +65,7 @@ checked end to end.
 | Codex CLI 0.162 | Ubuntu 26.04 LTS, x86_64 | Node.js 24 from a checkout: `yandex-wordstat`, `yandex-webmaster` | Configured, not checked separately | Maintainer's host config |
 | Node.js 22 + Bun | Ubuntu (`ubuntu-latest`) | Unit tests; all five servers answer `tools/list` over stdio | Verified in CI | `ci.yml` (`node --test`, `scripts/smoke-tools.mjs`) |
 | `yandex-metrika`, `yandex-search` with a real token | any | — | Not verified in a client | CI smoke test only |
-| `npx @stufently/*` from npm | any | — | Not verified | See **Status** above |
+| `npx @stufently/*` from npm | Ubuntu, `node:24-alpine` | `npx -y @stufently/yandex-*-mcp`, stdio | Verified | All five answer `tools/list` from the published 2.2.0 packages (2026-10-15) |
 | Claude Desktop (`.mcpb`), Claude Code plugin | any | Desktop Extension, plugin | Not verified | Bundles are built in CI, never installed in a real Desktop or as a plugin |
 | Cursor, Windsurf, Zed | any | Configs below | Not verified | Documented only |
 | macOS, Windows | — | Any client | Not verified | No CI runner on these systems |

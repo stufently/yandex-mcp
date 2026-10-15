@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15 — пакеты в npm и MCP Registry
+
+- `@stufently/yandex-{search,wordstat,webmaster,metrika,direct}-mcp@2.2.0` опубликованы в npm; все пять отвечают `tools/list` через `npx -y`.
+- Все пять серверов внесены в MCP Registry (`io.github.stufently/yandex-*-mcp` 2.2.0) через `registry.yml`.
+- README: убрана оговорка «пакетов в npm ещё нет», строка `npx` в таблице клиентов — Verified.
+
 ## 2026-10-14 — npm trusted publishing вместо NPM_TOKEN
 
 ### Changed
