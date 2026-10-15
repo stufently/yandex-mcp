@@ -215,6 +215,18 @@ gh attestation verify <bundle>.mcpb --repo stufently/yandex-mcp
 
 ### Cursor
 
+[![Add yandex-search MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=yandex-search&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBzdHVmZW50bHkveWFuZGV4LXNlYXJjaC1tY3AiXSwiZW52Ijp7IllBTkRFWF9TRUFSQ0hfQVBJX0tFWSI6InlvdXItY2xvdWQtYXBpLWtleSIsIllBTkRFWF9GT0xERVJfSUQiOiJ5b3VyLWZvbGRlci1pZCJ9fQ%3D%3D) `yandex-search`
+
+[![Add yandex-wordstat MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=yandex-wordstat&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBzdHVmZW50bHkveWFuZGV4LXdvcmRzdGF0LW1jcCJdLCJlbnYiOnsiV09SRFNUQVRfQVBJX0tFWSI6InlvdXItY2xvdWQtYXBpLWtleSIsIldPUkRTVEFUX0ZPTERFUl9JRCI6InlvdXItZm9sZGVyLWlkIn19) `yandex-wordstat`
+
+[![Add yandex-webmaster MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=yandex-webmaster&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBzdHVmZW50bHkveWFuZGV4LXdlYm1hc3Rlci1tY3AiXSwiZW52Ijp7IllBTkRFWF9XRUJNQVNURVJfVE9LRU4iOiJ5b3VyLW9hdXRoLXRva2VuIn19) `yandex-webmaster`
+
+[![Add yandex-metrika MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=yandex-metrika&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBzdHVmZW50bHkveWFuZGV4LW1ldHJpa2EtbWNwIl0sImVudiI6eyJZQU5ERVhfTUVUUklLQV9UT0tFTiI6InlvdXItb2F1dGgtdG9rZW4ifX0%3D) `yandex-metrika`
+
+[![Add yandex-direct MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=yandex-direct&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBzdHVmZW50bHkveWFuZGV4LWRpcmVjdC1tY3AiXSwiZW52Ijp7IllBTkRFWF9ESVJFQ1RfVE9LRU4iOiJ5b3VyLW9hdXRoLXRva2VuIiwiWUFOREVYX0RJUkVDVF9DTElFTlRfTE9HSU4iOiIiLCJZQU5ERVhfRElSRUNUX1NBTkRCT1giOiJ0cnVlIn19) `yandex-direct`
+
+Each button installs one server; replace the `your-…` placeholders in `~/.cursor/mcp.json` afterwards. Or add the block below by hand.
+
 File: `~/.cursor/mcp.json` (all projects) or `.cursor/mcp.json` (one project).
 
 ```json
