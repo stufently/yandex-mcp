@@ -46,7 +46,7 @@ YANDEX_WEBMASTER_TOKEN=your-oauth-token npx -y @stufently/yandex-webmaster-mcp
 All five servers start without their variables and fail only on the first tool call, with an
 error that names the missing variable.
 
-Append a version (`@stufently/yandex-webmaster-mcp@2.2.0`) to pin it instead of taking the
+Append a version (`@stufently/yandex-webmaster-mcp@2.2.1`) to pin it instead of taking the
 latest release on every start. The OAuth helper runs the same way:
 `npx -y @stufently/yandex-webmaster-mcp auth` (and `@stufently/yandex-metrika-mcp auth`).
 

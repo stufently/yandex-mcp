@@ -187,7 +187,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-metrika', version: '2.2.0' });
+  const server = new McpServer({ name: 'yandex-metrika', version: '2.2.1' });
   const registrar = createToolRegistrar(server);
 
   // === Management (5 tools) ===

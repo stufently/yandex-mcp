@@ -8,14 +8,14 @@
     "source": "github",
     "subfolder": "packages/yandex-webmaster-mcp"
   },
-  "version": "2.2.0",
+  "version": "2.2.1",
   "websiteUrl": "https://github.com/stufently/yandex-mcp/tree/main/packages/yandex-webmaster-mcp#readme",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@stufently/yandex-webmaster-mcp",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "transport": {
         "type": "stdio"
       },

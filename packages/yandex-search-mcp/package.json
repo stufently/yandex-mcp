@@ -1,7 +1,7 @@
 {
   "name": "@stufently/yandex-search-mcp",
   "mcpName": "io.github.stufently/yandex-search-mcp",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "MCP server for Yandex Search API (v2, Cloud)",
   "keywords": [
     "mcp",

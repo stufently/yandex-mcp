@@ -499,7 +499,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-direct-mcp', version: '2.2.0' });
+  const server = new McpServer({ name: 'yandex-direct-mcp', version: '2.2.1' });
   const registrar = createToolRegistrar(server);
 
   // ===========================

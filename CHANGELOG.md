@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-16 — 2.2.1: первая публикация через trusted publishing
+
+### Changed
+- Версия 2.2.1 во всех пяти пакетах (`package.json`, `server.json`, `McpServer`), в `bun.lock` и в примере пина в README. Код не менялся: релиз нужен, чтобы `publish.yml` впервые опубликовал пакеты через npm trusted publishing (OIDC) и подтвердил настроенных на npmjs.com trusted publishers (без публикации за 48 ч настройка сгорает).
+
 ## 2026-10-15 — пакеты в npm и MCP Registry
 
 - `@stufently/yandex-{search,wordstat,webmaster,metrika,direct}-mcp@2.2.0` опубликованы в npm; все пять отвечают `tools/list` через `npx -y`.
