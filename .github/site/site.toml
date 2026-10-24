@@ -1,0 +1,59 @@
+# Site config for .github/site/build.py. Everything else comes from README.md.
+name = "Yandex MCP"
+title = "Yandex MCP — MCP servers for Yandex Wordstat, Webmaster, Metrika"
+headline = "MCP servers for Yandex Search, Wordstat, Webmaster, Metrika and Direct"
+description = "Five MCP servers, 94 tools: give Claude, Cursor or Codex access to Yandex Search, Wordstat, Webmaster, Metrika and Direct. Run with npx, MIT."
+lang = "en"
+keywords = ["yandex mcp", "mcp server", "yandex wordstat", "yandex webmaster", "yandex metrika", "yandex direct", "claude code", "seo"]
+license = "MIT"
+license_url = "https://opensource.org/license/mit"
+category = "DeveloperApplication"
+os = "Linux, macOS, Windows"
+programming_language = "JavaScript"
+eyebrow = "Open source · MIT · Node.js 22+"
+download_url = "https://www.npmjs.com/org/stufently"
+same_as = ["https://www.npmjs.com/package/@stufently/yandex-webmaster-mcp"]
+
+landing_sections = ["Install", "Example prompts"]
+
+pages = [
+  "packages/yandex-search-mcp/README.md",
+  "packages/yandex-wordstat-mcp/README.md",
+  "packages/yandex-webmaster-mcp/README.md",
+  "packages/yandex-metrika-mcp/README.md",
+  "packages/yandex-direct-mcp/README.md",
+]
+docs_dir = ""
+
+features = [
+  "Yandex Search: run Search API v2 queries and get ranked results with domains.",
+  "Yandex Wordstat: monthly search volume, trends, regional demand and related queries.",
+  "Yandex Webmaster: 33 tools for indexing, search queries, sitemaps, recrawl and site problems.",
+  "Yandex Metrika: traffic summaries, sources, landing pages, geography and custom reports.",
+  "Yandex Direct: 43 tools for campaigns, ads, keywords, bids and reports; irreversible writes need confirm: true.",
+  "Works in Claude Code, Claude Desktop, Cursor, Windsurf, Zed and Codex; also ships as a Claude Code plugin and Docker image.",
+]
+
+[[faq]]
+q = "How do I install Yandex MCP?"
+a = "No clone or build is needed. With Node.js 22 or newer, run a server with npx, for example YANDEX_WEBMASTER_TOKEN=your-oauth-token npx -y @stufently/yandex-webmaster-mcp, and register the same command in your MCP client."
+
+[[faq]]
+q = "Which Yandex APIs are covered?"
+a = "Five servers: Yandex Search API v2, Wordstat (Cloud Search API v2), Webmaster API v4, Metrika API and Direct API v5 — 94 tools in total."
+
+[[faq]]
+q = "Which AI clients does it work with?"
+a = "Any MCP client over stdio. The README has ready configs for Claude Code, Claude Desktop, Cursor, Windsurf, Zed and Codex; Claude Code is verified in daily use."
+
+[[faq]]
+q = "Why must I use the @stufently/ package names?"
+a = "The unscoped names such as yandex-webmaster-mcp on npm belong to a different publisher. Running them with your Yandex tokens in the environment hands those tokens to unrelated code, so always type the @stufently/ prefix."
+
+[[faq]]
+q = "Can the Direct server change my live ad account?"
+a = "Yes. Every Direct write hits the production account. The fourteen irreversible tools refuse unless the call passes confirm: true, and YANDEX_DIRECT_SANDBOX=true points the server at the Direct sandbox for experiments."
+
+[[faq]]
+q = "Which tokens do I need?"
+a = "Only the ones for the servers you enable: an API key and folder ID from Yandex Cloud for Search and Wordstat, and OAuth tokens for Webmaster, Metrika and Direct. Each server starts without them and names the missing variable on the first tool call."
