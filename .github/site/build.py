@@ -15,6 +15,7 @@ import sys
 import tomllib
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(HERE))
 from md import Renderer, plain  # noqa: E402
 from page import UI, landing_body, shell  # noqa: E402
