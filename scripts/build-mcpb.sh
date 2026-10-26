@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Build the five Desktop Extension bundles into dist-mcpb/.
 # This is the only build entry point, locally and in CI. npm and the mcpb CLI
-# run inside node:24.21.0-slim as the current user; nothing is installed on the host.
+# run inside node:24.22.1-slim as the current user; nothing is installed on the host.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-IMAGE="node:24.21.0-slim"
+IMAGE="node:24.22.1-slim"
 MCPB_CLI="@anthropic-ai/mcpb@2.1.2"
 OUT="dist-mcpb"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/yandex-mcp-mcpb-npm"

@@ -11,7 +11,7 @@
 # ---------- deps: production node_modules from bun.lock ----------
 # The repo's lockfile is bun.lock (no package-lock.json), so dependencies are
 # resolved with Bun against it; --production leaves out the dev-only Biome.
-FROM oven/bun:1.4.3-alpine AS deps
+FROM oven/bun:1.4.4-alpine AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/yandex-search-mcp/package.json packages/yandex-search-mcp/
@@ -22,7 +22,7 @@ COPY packages/yandex-direct-mcp/package.json packages/yandex-direct-mcp/
 RUN bun install --frozen-lockfile --production --ignore-scripts
 
 # ---------- runtime ----------
-FROM node:24.21.0-alpine
+FROM node:24.22.1-alpine
 LABEL org.opencontainers.image.source="https://github.com/stufently/yandex-mcp" \
       org.opencontainers.image.description="MCP servers for Yandex Search, Wordstat, Webmaster, Metrika and Direct" \
       org.opencontainers.image.licenses="MIT"

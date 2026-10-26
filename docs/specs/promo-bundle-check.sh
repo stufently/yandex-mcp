@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 CHECK=docs/specs/promo_check.py
 MCPB_CLI=@anthropic-ai/mcpb@2.1.2
-NODE_IMAGE=node:24.21.0-slim
+NODE_IMAGE=node:24.22.1-slim
 UV_IMAGE=ghcr.io/astral-sh/uv:0.12.23-python3.14-trixie-slim
 OUT=dist-mcpb
 NPM_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/promo-mcpb-npm"
