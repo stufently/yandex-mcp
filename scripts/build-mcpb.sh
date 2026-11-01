@@ -150,12 +150,22 @@ mode, lock_path, stage = sys.argv[1:]
 text = open(lock_path, encoding="utf-8").read()
 lock = json.loads(re.sub(r",(\s*[}\]])", r"\1", text))
 pinned = {}
+# bun.lock keys a copy that differs from the hoisted one as "<parent>/<name>"
+# (body-parser/content-type). A flat override would force the hoisted version
+# into that parent, so these become nested npm overrides and nested checks.
+nested = {}
 for name, entry in lock["packages"].items():
     spec = entry[0]
     pkg_name, _, version = spec.rpartition("@")
-    if pkg_name != name or not version or version.startswith("workspace:"):
+    if not version or version.startswith("workspace:"):
         continue
-    pinned[name] = version
+    if pkg_name == name:
+        pinned[name] = version
+    elif name.endswith("/" + pkg_name):
+        nested.setdefault(name[: -len(pkg_name) - 1], {})[pkg_name] = version
+for parent in nested:
+    if parent not in pinned:
+        sys.exit(f"bun.lock nests under {parent!r}, which is not a hoisted package")
 
 manifest_path = f"{stage}/package.json"
 if mode == "pin":
@@ -165,7 +175,11 @@ if mode == "pin":
     if missing:
         sys.exit(f"bun.lock has no entry for {missing}")
     manifest["dependencies"] = {name: pinned[name] for name in deps}
-    manifest["overrides"] = {n: v for n, v in sorted(pinned.items()) if not n.startswith("@biomejs/")}
+    overrides = {n: v for n, v in sorted(pinned.items()) if not n.startswith("@biomejs/")}
+    for parent, children in nested.items():
+        if parent in overrides:
+            overrides[parent] = {".": overrides[parent], **dict(sorted(children.items()))}
+    manifest["overrides"] = overrides
     manifest.pop("devDependencies", None)
     with open(manifest_path, "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, indent=2)
@@ -186,8 +200,12 @@ elif mode == "check":
         if name.startswith("."):
             continue
         version = json.load(open(f"{dirpath}/package.json", encoding="utf-8")).get("version")
-        if pinned.get(name) != version:
-            bad.append(f"{name}@{version} (lock {pinned.get(name)})")
+        chain = [c.strip("/") for c in dirpath[len(root):].split("/node_modules/")]
+        expected = pinned.get(name)
+        if len(chain) == 2:
+            expected = nested.get(chain[0], {}).get(name, expected)
+        if expected != version:
+            bad.append(f"{name}@{version} (lock {expected})")
     if bad:
         sys.exit("node_modules differs from bun.lock: " + ", ".join(sorted(set(bad))))
 else:
