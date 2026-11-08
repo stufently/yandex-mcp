@@ -23,6 +23,7 @@ import {
   formatSummary,
   orNA,
 } from './format.mjs';
+import { apiError, fetchWithRetry } from './http.mjs';
 import { annotateBrokenLinks, formatBrokenLinks } from './links.mjs';
 import { formatSeries, formatUrlHistory } from './series.mjs';
 import { createToolRegistrar } from './tool-surface.mjs';
@@ -50,36 +51,6 @@ async function runServer() {
   }
 
   // --- Shared utilities ---
-
-  async function fetchWithRetry(url, options, maxRetries = 3) {
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      let response;
-      try {
-        response = await fetch(url, options);
-      } catch (err) {
-        if (attempt === maxRetries) throw new Error(`Network error after ${maxRetries} retries: ${err.message}`);
-        const delay = Math.min(1000 * 2 ** attempt, 10000);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      if (response.status === 429 || response.status >= 500) {
-        if (attempt === maxRetries) {
-          const text = await response.text();
-          throw new Error(`API error (${response.status}) after ${maxRetries} retries: ${text.substring(0, 500)}`);
-        }
-        const retryAfter = response.headers.get('Retry-After');
-        const parsed = retryAfter
-          ? Number.isFinite(Number(retryAfter))
-            ? Number(retryAfter) * 1000
-            : Math.max(0, new Date(retryAfter).getTime() - Date.now())
-          : 0;
-        const delay = parsed > 0 ? Math.min(parsed, 30000) : Math.min(1000 * 2 ** attempt, 10000);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      return response;
-    }
-  }
 
   async function safeJsonParse(response) {
     const text = await response.text();
@@ -133,7 +104,7 @@ async function runServer() {
         cachedUserId = null;
       }
       const errorText = await response.text();
-      throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
+      throw apiError(response.status, errorText);
     }
 
     return safeJsonParse(response);
@@ -159,7 +130,7 @@ async function runServer() {
         cachedUserId = null;
       }
       const errorText = await response.text();
-      throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
+      throw apiError(response.status, errorText);
     }
 
     return safeJsonParse(response);
@@ -186,7 +157,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-webmaster', version: '2.2.1' });
+  const server = new McpServer({ name: 'yandex-webmaster', version: '2.3.0' });
   const registrar = createToolRegistrar(server);
 
   /**
@@ -822,20 +793,30 @@ async function runServer() {
     {
       title: 'Add Sitemap file',
       description:
-        'Add a Sitemap file to Yandex Webmaster (user-added sitemaps). Returns sitemap_id. ' +
-        'The host must be verified, or the call fails with 404 HOST_NOT_VERIFIED. Adding a file ' +
-        'that is already there fails with 409 SITEMAP_ALREADY_ADDED — not a broken call but ' +
-        '"already present", and the error payload names the existing sitemap_id.',
+        'Add a Sitemap file to Yandex Webmaster (user-added sitemaps). Returns sitemap_id, url and ' +
+        'already_present: false for a new file. A 409 SITEMAP_ALREADY_ADDED is a successful result ' +
+        'with already_present: true and the existing sitemap_id (null if unavailable). ' +
+        'The host must be verified, or the call fails with 404 HOST_NOT_VERIFIED.',
       inputSchema: {
         host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
         url: z.string().describe('Full URL of the sitemap file (e.g. "https://example.com/sitemap.xml")'),
       },
     },
     async ({ host_id, url }) => {
-      const data = await apiRequestPost(await hostUrl(host_id, '/user-added-sitemaps'), { url });
+      let data;
+      try {
+        data = await apiRequestPost(await hostUrl(host_id, '/user-added-sitemaps'), { url });
+      } catch (error) {
+        if (error.status !== 409 || error.body?.error_code !== 'SITEMAP_ALREADY_ADDED') throw error;
+        const sitemap_id = error.body.sitemap_id ?? null;
+        return {
+          content: [{ type: 'text', text: `Sitemap already added: ${url}\nSitemap ID: ${sitemap_id}` }],
+          structuredContent: { already_present: true, sitemap_id, url },
+        };
+      }
       return {
         content: [{ type: 'text', text: `Sitemap added: ${url}\nSitemap ID: ${data.sitemap_id}` }],
-        structuredContent: data,
+        structuredContent: { ...data, already_present: false, url },
       };
     },
   );
@@ -864,17 +845,13 @@ async function runServer() {
   // 23. get-important-url-history
   registrar.tool(
     'get-important-url-history',
-    'Get history for a specific important URL.',
+    'Get the entire history of a tracked important URL. This resource has no date range filter.',
     {
       host_id: z.string().describe('Host ID'),
       url: z.string().describe('URL to get history for'),
-      date_from: z.string().optional(),
-      date_to: z.string().optional(),
     },
-    async ({ host_id, url: targetUrl, date_from, date_to }) => {
-      const dates = dateParams(date_from, date_to);
+    async ({ host_id, url: targetUrl }) => {
       const data = await apiRequest(await hostUrl(host_id, '/important-urls/history'), {
-        ...dates,
         url: targetUrl,
       });
       return {

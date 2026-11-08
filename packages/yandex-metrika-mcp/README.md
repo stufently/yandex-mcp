@@ -73,6 +73,13 @@ A write-capable token no longer means an unguarded delete: `delete-counter` requ
 
 Note: The Metrika API uses `Authorization: OAuth {token}` (not Bearer).
 
+Each server process limits API requests to 3 in parallel and report attempts to 200 requests
+per sliding 5-minute window. Once the report quota is full, the tool refuses locally without
+a network request and tells you how many seconds to wait before retrying. Every report retry
+counts toward this limit; management requests do not. Network errors and HTTP 420/429/5xx
+are retried up to 3 times, respecting `Retry-After`; retry delays release the parallel slot.
+The daily quota remains enforced by Yandex rather than tracked locally.
+
 ## Tool Reference (12 tools)
 
 ### Management (5)

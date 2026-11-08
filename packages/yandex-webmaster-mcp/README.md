@@ -169,17 +169,18 @@ specific page does not.
 | `add-sitemap` | **Write.** Add a user sitemap file; returns `sitemap_id`. Additive — the file is removable in the Webmaster panel | `host_id`, `url` |
 
 `add-sitemap` needs the host verified (`404 HOST_NOT_VERIFIED` otherwise). Adding a file that is
-already there answers `409 SITEMAP_ALREADY_ADDED`; like every other non-2xx here it surfaces as
-an error, and its payload names the existing `sitemap_id` — read it as "already present" rather
-than retrying. Removing a sitemap (`DELETE /user-added-sitemaps/{id}`) exists in the API but is
-deliberately not wrapped here.
+already there (`409 SITEMAP_ALREADY_ADDED`) returns success with `already_present: true`,
+the existing `sitemap_id` (or `null` if absent), and `url`; no retry is needed. A new file returns
+the API response with `already_present: false` and `url`. Other API errors remain errors.
+Removing a sitemap (`DELETE /user-added-sitemaps/{id}`) exists in the API but is deliberately
+not wrapped here.
 
 ### Important URLs (2)
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `get-important-urls` | Get important URLs for a site | `host_id`, `limit?` (1-100), `offset?` |
-| `get-important-url-history` | Get history for a specific important URL | `host_id`, `url`, `date_from?`, `date_to?` |
+| `get-important-url-history` | Get the entire history for a tracked important URL; no date range filter | `host_id`, `url` |
 
 ### Recrawl (4)
 
