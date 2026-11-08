@@ -65,7 +65,11 @@ async function runServer() {
       if (response.status === 429 || response.status >= 500) {
         if (attempt === maxRetries) {
           const text = await response.text();
-          throw new Error(`API error (${response.status}) after ${maxRetries} retries: ${text.substring(0, 500)}`);
+          throw apiError(
+            response.status,
+            text,
+            `API error (${response.status}) after ${maxRetries} retries: ${text.substring(0, 500)}`,
+          );
         }
         const retryAfter = response.headers.get('Retry-After');
         const parsed = retryAfter
@@ -103,8 +107,8 @@ async function runServer() {
 
   // --- API Request ---
 
-  function apiError(status, text) {
-    const error = new Error(`Webmaster API error (${status}): ${text.substring(0, 500)}`);
+  function apiError(status, text, message = `Webmaster API error (${status}): ${text.substring(0, 500)}`) {
+    const error = new Error(message);
     error.status = status;
     try {
       error.body = JSON.parse(text);

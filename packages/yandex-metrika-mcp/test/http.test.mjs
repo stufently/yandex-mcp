@@ -46,10 +46,10 @@ test('retryable status boundaries include 420, 429 and all 5xx', () => {
   for (const status of [200, 400, 419, 421, 428, 430, 499]) assert.equal(isRetryableStatus(status), false, `${status}`);
 });
 
-test('420 retries and forwards url, options and the successful Response unchanged', async () => {
+test('420 retries, forwards url and options, and preserves successful response contents', async () => {
   const calls = [];
   const sleeps = [];
-  const final = response();
+  const final = response(202, 'accepted', { 'x-response-marker': 'preserved' });
   const options = { method: 'POST', body: 'payload' };
   const fetch = makeFetch({
     fetchImpl: async (...args) => {
@@ -58,7 +58,10 @@ test('420 retries and forwards url, options and the successful Response unchange
     },
     sleep: async (ms) => sleeps.push(ms),
   });
-  assert.equal(await fetch(REPORT, options), final);
+  const result = await fetch(REPORT, options);
+  assert.equal(result.status, 202);
+  assert.equal(result.headers.get('x-response-marker'), 'preserved');
+  assert.equal(await result.text(), 'accepted');
   assert.deepEqual(calls, [
     [REPORT, options],
     [REPORT, options],
@@ -96,7 +99,7 @@ test('500 retries and exhaustion keeps status and the first 500 body characters'
 test('499 is returned without retries or sleep', async () => {
   let calls = 0;
   const sleeps = [];
-  const original = response(499);
+  const original = response(499, 'unchanged', { 'x-response-marker': 'preserved' });
   const fetch = makeFetch({
     fetchImpl: async () => {
       calls++;
@@ -104,7 +107,10 @@ test('499 is returned without retries or sleep', async () => {
     },
     sleep: async (ms) => sleeps.push(ms),
   });
-  assert.equal(await fetch(REPORT), original);
+  const result = await fetch(REPORT);
+  assert.equal(result.status, 499);
+  assert.equal(result.headers.get('x-response-marker'), 'preserved');
+  assert.equal(await result.text(), 'unchanged');
   assert.equal(calls, 1);
   assert.deepEqual(sleeps, []);
 });
@@ -367,4 +373,153 @@ test('fetch concurrency never exceeds the shared semaphore across report and man
   assert.equal(calls, 4);
   for (const gate of gates) gate.resolve();
   await Promise.all(pending);
+});
+
+test('queued report attempts acquire quota only when their semaphore slot starts', async () => {
+  let now = 0;
+  const window = createSlidingWindow({ limit: 1, windowMs: 300000, now: () => now });
+  const acquisitionTimes = [];
+  const semaphore = createSemaphore(1);
+  const gate = deferred();
+  const blocker = semaphore.run(() => gate.promise);
+  const calls = [];
+  const sleeps = [];
+  const fetch = makeFetch({
+    semaphore,
+    reportWindow: {
+      tryAcquire() {
+        acquisitionTimes.push(now);
+        return window.tryAcquire();
+      },
+    },
+    fetchImpl: async (url) => {
+      calls.push({ url, time: now });
+      return response();
+    },
+    sleep: async (ms) => sleeps.push(ms),
+  });
+  const queued = fetch(REPORT);
+  await setImmediate();
+  assert.deepEqual(calls, []);
+  now = 300000;
+  gate.resolve();
+  await blocker;
+  await queued;
+  assert.deepEqual(acquisitionTimes, [300000], 'quota must be acquired at slot start');
+  assert.deepEqual(calls, [{ url: REPORT, time: 300000 }]);
+  now = 300001;
+  const overflow = fetch(REPORT);
+  const management = fetch(MANAGEMENT);
+  await assert.rejects(overflow, {
+    message: 'Local report quota exceeded (200 requests / 5 min); retry in 300 seconds.',
+  });
+  assert.equal((await management).status, 200, 'a quota refusal must release its slot');
+  assert.deepEqual(calls, [
+    { url: REPORT, time: 300000 },
+    { url: MANAGEMENT, time: 300001 },
+  ]);
+  assert.deepEqual(sleeps, [], 'local quota refusals must not retry');
+  now = 599999;
+  await assert.rejects(fetch(REPORT), /retry in 1 seconds/);
+  assert.equal(calls.length, 2);
+  now = 600000;
+  assert.equal((await fetch(REPORT)).status, 200);
+});
+
+test('all three semaphore slots remain occupied until slow response bodies finish', async (t) => {
+  const controllers = [];
+  const closed = new Set();
+  const close = (i) => {
+    if (!closed.has(i)) {
+      controllers[i].close();
+      closed.add(i);
+    }
+  };
+  const calls = [];
+  const fetch = makeFetch({
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controllers.push(controller);
+          },
+        }),
+        {
+          status: 201,
+          statusText: 'Created',
+          headers: { 'x-response-marker': 'preserved' },
+        },
+      );
+    },
+  });
+  const pending = [fetch(REPORT), fetch(MANAGEMENT), fetch(REPORT), fetch(MANAGEMENT)];
+  const settled = [];
+  pending.forEach((promise, i) => {
+    promise.then(() => settled.push(i));
+  });
+  t.after(async () => {
+    // Also release streams created by queued fetches while cleaning up a failed assertion.
+    for (let i = 0; i < pending.length; i++) {
+      await setImmediate();
+      close(i);
+    }
+    await Promise.all(pending);
+  });
+  await setImmediate();
+  assert.equal(calls.length, 3, 'the fourth fetch must wait for a complete body');
+  assert.deepEqual(settled, [], 'headers alone must not resolve the request');
+  const bytes = new Uint8Array([0, 255, 10, 65]);
+  controllers[1].enqueue(bytes);
+  await setImmediate();
+  assert.equal(calls.length, 3, 'an unfinished body must still occupy its slot');
+  close(1);
+  const result = await pending[1];
+  assert.equal(result.status, 201);
+  assert.equal(result.statusText, 'Created');
+  assert.equal(result.headers.get('x-response-marker'), 'preserved');
+  assert.deepEqual(new Uint8Array(await result.arrayBuffer()), bytes);
+  await setImmediate();
+  assert.equal(calls.length, 4);
+});
+
+test('failed body downloads retry and release the semaphore before sleeping', async () => {
+  const semaphore = createSemaphore(1);
+  const sleeps = [];
+  let calls = 0;
+  const fetch = makeFetch({
+    semaphore,
+    fetchImpl: async () => {
+      if (++calls === 1) {
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new Error('body interrupted'));
+            },
+          }),
+        );
+      }
+      return response(200, 'complete');
+    },
+    sleep: async (ms) => {
+      sleeps.push(ms);
+      assert.equal(await semaphore.run(async () => 'slot available'), 'slot available');
+    },
+  });
+  assert.equal(await (await fetch(REPORT)).text(), 'complete');
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [1000]);
+});
+
+test('buffering preserves responses whose status forbids a body', async () => {
+  for (const status of [204, 205, 304]) {
+    const fetch = makeFetch({
+      fetchImpl: async () => new Response(null, { status, headers: { 'x-response-marker': 'empty' } }),
+    });
+    const result = await fetch(MANAGEMENT);
+    assert.equal(result.status, status);
+    assert.equal(result.body, null);
+    assert.equal(result.headers.get('x-response-marker'), 'empty');
+    assert.equal(await result.text(), '');
+  }
 });

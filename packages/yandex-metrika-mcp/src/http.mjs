@@ -2,6 +2,8 @@ export const METRIKA_MAX_CONCURRENT = 3;
 export const REPORT_QUOTA_LIMIT = 200;
 export const REPORT_QUOTA_WINDOW_MS = 300000;
 
+class ReportQuotaError extends Error {}
+
 export function isRetryableStatus(status) {
   return status === 420 || status === 429 || status >= 500;
 }
@@ -43,18 +45,28 @@ export function createSlidingWindow({ limit, windowMs, now = Date.now }) {
 export function createFetchWithRetry({ fetchImpl, sleep, semaphore, reportWindow, isReportUrl, maxRetries = 3 }) {
   return async (url, options) => {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (isReportUrl(url)) {
-        const waitMs = reportWindow.tryAcquire();
-        if (waitMs > 0) {
-          throw new Error(
-            `Local report quota exceeded (200 requests / 5 min); retry in ${Math.ceil(waitMs / 1000)} seconds.`,
-          );
-        }
-      }
       let response;
       try {
-        response = await semaphore.run(() => fetchImpl(url, options));
+        response = await semaphore.run(async () => {
+          if (isReportUrl(url)) {
+            const waitMs = reportWindow.tryAcquire();
+            if (waitMs > 0) {
+              throw new ReportQuotaError(
+                `Local report quota exceeded (200 requests / 5 min); retry in ${Math.ceil(waitMs / 1000)} seconds.`,
+              );
+            }
+          }
+          const res = await fetchImpl(url, options);
+          const hasBody = res.body !== null;
+          const buf = await res.arrayBuffer();
+          return new Response(hasBody ? buf : null, {
+            status: res.status,
+            statusText: res.statusText,
+            headers: res.headers,
+          });
+        });
       } catch (err) {
+        if (err instanceof ReportQuotaError) throw err;
         if (attempt === maxRetries) throw new Error(`Network error after ${maxRetries} retries: ${err.message}`);
         await sleep(Math.min(1000 * 2 ** attempt, 10000));
         continue;
