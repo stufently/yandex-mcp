@@ -103,6 +103,17 @@ async function runServer() {
 
   // --- API Request ---
 
+  function apiError(status, text) {
+    const error = new Error(`Webmaster API error (${status}): ${text.substring(0, 500)}`);
+    error.status = status;
+    try {
+      error.body = JSON.parse(text);
+    } catch {
+      error.body = undefined;
+    }
+    return error;
+  }
+
   function buildUrl(endpoint, queryParams = {}) {
     const url = new URL(`${API_BASE}${endpoint}`);
     for (const [key, value] of Object.entries(queryParams)) {
@@ -133,7 +144,7 @@ async function runServer() {
         cachedUserId = null;
       }
       const errorText = await response.text();
-      throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
+      throw apiError(response.status, errorText);
     }
 
     return safeJsonParse(response);
@@ -159,7 +170,7 @@ async function runServer() {
         cachedUserId = null;
       }
       const errorText = await response.text();
-      throw new Error(`Webmaster API error (${response.status}): ${errorText.substring(0, 500)}`);
+      throw apiError(response.status, errorText);
     }
 
     return safeJsonParse(response);
@@ -186,7 +197,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-webmaster', version: '2.2.1' });
+  const server = new McpServer({ name: 'yandex-webmaster', version: '2.3.0' });
   const registrar = createToolRegistrar(server);
 
   /**
@@ -822,20 +833,30 @@ async function runServer() {
     {
       title: 'Add Sitemap file',
       description:
-        'Add a Sitemap file to Yandex Webmaster (user-added sitemaps). Returns sitemap_id. ' +
-        'The host must be verified, or the call fails with 404 HOST_NOT_VERIFIED. Adding a file ' +
-        'that is already there fails with 409 SITEMAP_ALREADY_ADDED — not a broken call but ' +
-        '"already present", and the error payload names the existing sitemap_id.',
+        'Add a Sitemap file to Yandex Webmaster (user-added sitemaps). Returns sitemap_id, url and ' +
+        'already_present: false for a new file. A 409 SITEMAP_ALREADY_ADDED is a successful result ' +
+        'with already_present: true and the existing sitemap_id (null if unavailable). ' +
+        'The host must be verified, or the call fails with 404 HOST_NOT_VERIFIED.',
       inputSchema: {
         host_id: z.string().describe('Host ID (URL-encoded, e.g. "https:example.com:443")'),
         url: z.string().describe('Full URL of the sitemap file (e.g. "https://example.com/sitemap.xml")'),
       },
     },
     async ({ host_id, url }) => {
-      const data = await apiRequestPost(await hostUrl(host_id, '/user-added-sitemaps'), { url });
+      let data;
+      try {
+        data = await apiRequestPost(await hostUrl(host_id, '/user-added-sitemaps'), { url });
+      } catch (error) {
+        if (error.status !== 409 || error.body?.error_code !== 'SITEMAP_ALREADY_ADDED') throw error;
+        const sitemap_id = error.body.sitemap_id ?? null;
+        return {
+          content: [{ type: 'text', text: `Sitemap already added: ${url}\nSitemap ID: ${sitemap_id}` }],
+          structuredContent: { already_present: true, sitemap_id, url },
+        };
+      }
       return {
         content: [{ type: 'text', text: `Sitemap added: ${url}\nSitemap ID: ${data.sitemap_id}` }],
-        structuredContent: data,
+        structuredContent: { ...data, already_present: false, url },
       };
     },
   );
@@ -864,17 +885,13 @@ async function runServer() {
   // 23. get-important-url-history
   registrar.tool(
     'get-important-url-history',
-    'Get history for a specific important URL.',
+    'Get the entire history of a tracked important URL. This resource has no date range filter.',
     {
       host_id: z.string().describe('Host ID'),
       url: z.string().describe('URL to get history for'),
-      date_from: z.string().optional(),
-      date_to: z.string().optional(),
     },
-    async ({ host_id, url: targetUrl, date_from, date_to }) => {
-      const dates = dateParams(date_from, date_to);
+    async ({ host_id, url: targetUrl }) => {
       const data = await apiRequest(await hostUrl(host_id, '/important-urls/history'), {
-        ...dates,
         url: targetUrl,
       });
       return {

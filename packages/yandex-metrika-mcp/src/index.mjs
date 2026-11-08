@@ -4,6 +4,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { CONFIRM_PARAM_DESCRIPTION, createDeleteCounterHandler } from './confirm.mjs';
+import {
+  createFetchWithRetry,
+  createSemaphore,
+  createSlidingWindow,
+  METRIKA_MAX_CONCURRENT,
+  REPORT_QUOTA_LIMIT,
+  REPORT_QUOTA_WINDOW_MS,
+} from './http.mjs';
 import { scopeHint, WRITE_SCOPE } from './scopes.mjs';
 import { createToolRegistrar } from './tool-surface.mjs';
 
@@ -32,35 +40,13 @@ async function runServer() {
 
   // --- Shared utilities ---
 
-  async function fetchWithRetry(url, options, maxRetries = 3) {
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      let response;
-      try {
-        response = await fetch(url, options);
-      } catch (err) {
-        if (attempt === maxRetries) throw new Error(`Network error after ${maxRetries} retries: ${err.message}`);
-        const delay = Math.min(1000 * 2 ** attempt, 10000);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      if (response.status === 429 || response.status >= 500) {
-        if (attempt === maxRetries) {
-          const text = await response.text();
-          throw new Error(`API error (${response.status}) after ${maxRetries} retries: ${text.substring(0, 500)}`);
-        }
-        const retryAfter = response.headers.get('Retry-After');
-        const parsed = retryAfter
-          ? Number.isFinite(Number(retryAfter))
-            ? Number(retryAfter) * 1000
-            : Math.max(0, new Date(retryAfter).getTime() - Date.now())
-          : 0;
-        const delay = parsed > 0 ? Math.min(parsed, 30000) : Math.min(1000 * 2 ** attempt, 10000);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      return response;
-    }
-  }
+  const fetchWithRetry = createFetchWithRetry({
+    fetchImpl: (...args) => fetch(...args),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    semaphore: createSemaphore(METRIKA_MAX_CONCURRENT),
+    reportWindow: createSlidingWindow({ limit: REPORT_QUOTA_LIMIT, windowMs: REPORT_QUOTA_WINDOW_MS }),
+    isReportUrl: (url) => url.startsWith(`${STAT_API}/data`),
+  });
 
   async function safeJsonParse(response) {
     const text = await response.text();
@@ -187,7 +173,7 @@ async function runServer() {
 
   // --- MCP Server ---
 
-  const server = new McpServer({ name: 'yandex-metrika', version: '2.2.1' });
+  const server = new McpServer({ name: 'yandex-metrika', version: '2.3.0' });
   const registrar = createToolRegistrar(server);
 
   // === Management (5 tools) ===
