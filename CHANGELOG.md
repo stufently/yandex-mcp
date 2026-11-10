@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-10 — плагин: иконка и оговорка о неофициальности
+
+### Added
+- Иконка плагина `.claude-plugin/icon.png` (1024×1024 PNG, нейтральный образ «лупа с графиком + штекер», без символики Яндекса) — для карточки в каталоге плагинов Anthropic; `claude plugin validate --strict` больше не предупреждает `ICON_MISSING`.
+- README: оговорка «Unofficial, not affiliated with or endorsed by Yandex» в начале.
+
 ## 2026-11-10 — плагин: секреты через userConfig
 
 ### Changed
