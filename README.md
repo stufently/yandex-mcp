@@ -1,5 +1,9 @@
 # Yandex MCP
 
+> **Unofficial project, not affiliated with or endorsed by Yandex.** "Yandex" and the names of
+> its services are trademarks of their owner and are used here only to describe which APIs the
+> servers talk to.
+
 A monorepo of MCP (Model Context Protocol) servers for Yandex APIs. Provides AI assistants with access to Yandex Search, Wordstat, Webmaster, Metrika, and Direct through a unified interface.
 
 Built for Russian and CIS market analysis -- keyword research, search analytics, site monitoring, web traffic insights, and ad campaign management.
