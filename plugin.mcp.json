@@ -2,34 +2,41 @@
   "mcpServers": {
     "yandex-search": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-search-mcp/src/index.mjs"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-launch.mjs", "search"],
       "env": {
-        "YANDEX_SEARCH_API_KEY": "${YANDEX_SEARCH_API_KEY}",
-        "YANDEX_FOLDER_ID": "${YANDEX_FOLDER_ID}"
+        "YANDEX_MCP_PLUGIN_YANDEX_SEARCH_API_KEY": "${user_config.search_api_key}",
+        "YANDEX_MCP_PLUGIN_YANDEX_FOLDER_ID": "${user_config.search_folder_id}"
       }
     },
     "yandex-wordstat": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-wordstat-mcp/src/index.mjs"],
-      "env": { "WORDSTAT_API_KEY": "${WORDSTAT_API_KEY}", "WORDSTAT_FOLDER_ID": "${WORDSTAT_FOLDER_ID}" }
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-launch.mjs", "wordstat"],
+      "env": {
+        "YANDEX_MCP_PLUGIN_WORDSTAT_API_KEY": "${user_config.wordstat_api_key}",
+        "YANDEX_MCP_PLUGIN_WORDSTAT_FOLDER_ID": "${user_config.wordstat_folder_id}"
+      }
     },
     "yandex-webmaster": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-webmaster-mcp/src/index.mjs"],
-      "env": { "YANDEX_WEBMASTER_TOKEN": "${YANDEX_WEBMASTER_TOKEN}" }
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-launch.mjs", "webmaster"],
+      "env": {
+        "YANDEX_MCP_PLUGIN_YANDEX_WEBMASTER_TOKEN": "${user_config.webmaster_token}"
+      }
     },
     "yandex-metrika": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-metrika-mcp/src/index.mjs"],
-      "env": { "YANDEX_METRIKA_TOKEN": "${YANDEX_METRIKA_TOKEN}" }
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-launch.mjs", "metrika"],
+      "env": {
+        "YANDEX_MCP_PLUGIN_YANDEX_METRIKA_TOKEN": "${user_config.metrika_token}"
+      }
     },
     "yandex-direct": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/yandex-direct-mcp/src/index.mjs"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-launch.mjs", "direct"],
       "env": {
-        "YANDEX_DIRECT_TOKEN": "${YANDEX_DIRECT_TOKEN}",
-        "YANDEX_DIRECT_CLIENT_LOGIN": "${YANDEX_DIRECT_CLIENT_LOGIN}",
-        "YANDEX_DIRECT_SANDBOX": "${YANDEX_DIRECT_SANDBOX}"
+        "YANDEX_MCP_PLUGIN_YANDEX_DIRECT_TOKEN": "${user_config.direct_token}",
+        "YANDEX_MCP_PLUGIN_YANDEX_DIRECT_CLIENT_LOGIN": "${user_config.direct_client_login}",
+        "YANDEX_MCP_PLUGIN_YANDEX_DIRECT_SANDBOX": "${user_config.direct_sandbox}"
       }
     }
   }

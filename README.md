@@ -430,27 +430,34 @@ claude plugin install yandex-mcp@stufently --scope user
 | Bundled skills | `yandex-keyword-research`, `yandex-competitive-analysis` installed too | not included — skills are Claude Code only |
 | Updates | `/plugin update yandex-mcp@stufently` | `git pull` and re-check your paths |
 
-The plugin installs the servers but **not the credentials** — Claude Code substitutes only
-`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}` and `${CLAUDE_PROJECT_DIR}`. Supply the Yandex
-tokens yourself, either by exporting them in your shell or by putting them in
-`~/.claude/settings.json`:
+The plugin asks for the credentials itself. On install (or later with
+`/plugin configure yandex-mcp@stufently`) Claude Code shows one field per value; API keys and
+OAuth tokens are marked sensitive, so Claude Code masks them and keeps them in the system
+credential store (on Linux, `~/.claude/.credentials.json`), not in
+`settings.json`. Folder IDs, the Direct client login and the sandbox switch are plain settings
+under `pluginConfigs`.
 
-```json
-{
-  "env": {
-    "YANDEX_SEARCH_API_KEY": "...",
-    "YANDEX_FOLDER_ID": "...",
-    "WORDSTAT_API_KEY": "...",
-    "WORDSTAT_FOLDER_ID": "...",
-    "YANDEX_WEBMASTER_TOKEN": "...",
-    "YANDEX_METRIKA_TOKEN": "...",
-    "YANDEX_DIRECT_TOKEN": "..."
-  }
-}
-```
+| Option | Variable it sets | Sensitive |
+|---|---|---|
+| `search_api_key` | `YANDEX_SEARCH_API_KEY` | yes |
+| `search_folder_id` | `YANDEX_FOLDER_ID` | no |
+| `wordstat_api_key` | `WORDSTAT_API_KEY` | yes |
+| `wordstat_folder_id` | `WORDSTAT_FOLDER_ID` | no |
+| `webmaster_token` | `YANDEX_WEBMASTER_TOKEN` | yes |
+| `metrika_token` | `YANDEX_METRIKA_TOKEN` | yes |
+| `direct_token` | `YANDEX_DIRECT_TOKEN` | yes |
+| `direct_client_login` | `YANDEX_DIRECT_CLIENT_LOGIN` | no |
+| `direct_sandbox` | `YANDEX_DIRECT_SANDBOX` | no |
 
-Servers whose variables are missing simply fail on first use; the rest keep working, so you can
-install the plugin and set up one API at a time.
+Every option is optional. Servers whose values are missing simply fail on first use; the rest
+keep working, so you can install the plugin and set up one API at a time.
+
+**Already export the variables?** Earlier versions of the plugin read them from your shell or
+from `env` in `~/.claude/settings.json`, and that still works: an option you leave empty does not
+touch the variable of the same name, so the server sees the value from your environment. A value
+you do enter wins over the environment. The servers start through `scripts/plugin-launch.mjs`,
+which copies each non-empty option onto its variable and then runs the server in the same
+process.
 
 ### Docker
 

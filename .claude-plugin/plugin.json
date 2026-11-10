@@ -1,7 +1,7 @@
 {
   "name": "yandex-mcp",
-  "version": "2.3.0",
-  "description": "Yandex tools for Russian/CIS markets: search, keyword research (Wordstat), webmaster analytics, Metrika, and Direct ad campaigns — 91 tools across 5 MCP servers",
+  "version": "2.3.1",
+  "description": "Yandex tools for Russian/CIS markets: search, keyword research (Wordstat), webmaster analytics, Metrika, and Direct ad campaigns — 94 tools across 5 MCP servers",
   "license": "MIT",
   "author": {
     "name": "stufently",
@@ -11,5 +11,57 @@
   "repository": "https://github.com/stufently/yandex-mcp",
   "keywords": ["yandex", "seo", "search", "wordstat", "webmaster", "metrika", "direct", "russia", "mcp", "claude-code"],
   "mcpServers": "./plugin.mcp.json",
-  "skills": "./.claude/skills/"
+  "skills": "./.claude/skills/",
+  "userConfig": {
+    "search_api_key": {
+      "type": "string",
+      "title": "Yandex Cloud Search API key",
+      "description": "API key of a Yandex Cloud service account with the search-api.webSearch.user role (YANDEX_SEARCH_API_KEY). Stored in the system credential store. Leave empty to skip this server or to keep using the variable from your environment.",
+      "sensitive": true
+    },
+    "search_folder_id": {
+      "type": "string",
+      "title": "Yandex Cloud folder ID for Search",
+      "description": "Folder ID (b1g...) the Search API key belongs to (YANDEX_FOLDER_ID). Leave empty to skip this server or to keep using the variable from your environment."
+    },
+    "wordstat_api_key": {
+      "type": "string",
+      "title": "Yandex Cloud Wordstat API key",
+      "description": "API key with the search-api.webSearch.user role used for Wordstat (WORDSTAT_API_KEY). Stored in the system credential store. Leave empty to skip this server or to keep using the variable from your environment.",
+      "sensitive": true
+    },
+    "wordstat_folder_id": {
+      "type": "string",
+      "title": "Yandex Cloud folder ID for Wordstat",
+      "description": "Folder ID (b1g...) for Wordstat requests (WORDSTAT_FOLDER_ID). Leave empty to skip this server or to keep using the variable from your environment."
+    },
+    "webmaster_token": {
+      "type": "string",
+      "title": "Yandex Webmaster OAuth token",
+      "description": "OAuth token with Webmaster access (YANDEX_WEBMASTER_TOKEN). Stored in the system credential store. Leave empty to skip this server or to keep using the variable from your environment.",
+      "sensitive": true
+    },
+    "metrika_token": {
+      "type": "string",
+      "title": "Yandex Metrika OAuth token",
+      "description": "OAuth token with the metrika:read scope, or metrika:write for the write tools (YANDEX_METRIKA_TOKEN). Stored in the system credential store. Leave empty to skip this server or to keep using the variable from your environment.",
+      "sensitive": true
+    },
+    "direct_token": {
+      "type": "string",
+      "title": "Yandex Direct OAuth token",
+      "description": "OAuth token for the Yandex Direct API (YANDEX_DIRECT_TOKEN). Stored in the system credential store. Leave empty to skip this server or to keep using the variable from your environment.",
+      "sensitive": true
+    },
+    "direct_client_login": {
+      "type": "string",
+      "title": "Yandex Direct client login",
+      "description": "Client login for agency accounts (YANDEX_DIRECT_CLIENT_LOGIN). Leave empty for your own account or to keep the variable from your environment."
+    },
+    "direct_sandbox": {
+      "type": "boolean",
+      "title": "Use the Yandex Direct sandbox",
+      "description": "Send Direct requests to the sandbox API instead of live campaigns (YANDEX_DIRECT_SANDBOX). Unset keeps the variable from your environment; unset there too means the live API."
+    }
+  }
 }
