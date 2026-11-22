@@ -63,6 +63,7 @@ jobs:
             if [ "$code" = "200" ]; then
               echo "$name $version is already in the registry, skipping"; continue
             fi
+            bash scripts/wait-npm-version.sh "$pkg" "$version"
             # Fail with a readable reason instead of the registry's ownership error.
             npm view "$pkg@$version" mcpName > npm-mcpname.txt
             if [ "$(cat npm-mcpname.txt)" != "$name" ]; then
