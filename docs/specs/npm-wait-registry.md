@@ -25,7 +25,7 @@ git pull в клоне не делать; push в origin запрещён, ра�
 | Файл | sha256 |
 |---|---|
 | `docs/specs/npm-wait-registry.md` | эта спека |
-| `docs/specs/npm-wait-probe.sh` | `b4a8586a267c82f6f32f386709c27d4b1ff9a9dabc81025bd7b977f9520c21bf` |
+| `docs/specs/npm-wait-probe.sh` | `a3bad36d6f9524b8d5c053a73d2135706eb14b01eb40a721b3cba0465f042310` |
 | `docs/specs/mcpb-checksums-wiring.py` | `3fe4e1bfc7fea575553eb24865031501a4e351f51f3e7f3d8d3eb700597d146b` (уже был в репо, прежняя веха) |
 
 Зависимости ставить не нужно: критериям нужны `bash`, `sha256sum`, `python3` (stdlib) на хосте и образ
@@ -138,7 +138,7 @@ CHANGELOG), подсекция `### Fixed`: job MCP Registry ждёт, пока 
 
 - **AC-001.** Скрипт ожидания на фейковых npm и sleep: повторы, паузы, точное совпадение версии,
   умолчания 30 и 10, отказ на плохих аргументах. Пробник постановщика, его sha256 вшит:
-  `bash -c 'echo "b4a8586a267c82f6f32f386709c27d4b1ff9a9dabc81025bd7b977f9520c21bf  docs/specs/npm-wait-probe.sh" | sha256sum -c - && bash docs/specs/npm-wait-probe.sh scripts/wait-npm-version.sh'`
+  `bash -c 'echo "a3bad36d6f9524b8d5c053a73d2135706eb14b01eb40a721b3cba0465f042310  docs/specs/npm-wait-probe.sh" | sha256sum -c - && bash docs/specs/npm-wait-probe.sh scripts/wait-npm-version.sh'`
 - **AC-002.** Шаг Publish зовёт ожидание внутри цикла после вычисления pkg и до npm view mcpName
   (порядок проверяется, строки-комментарии не считаются):
   `bash -c 'echo "3fe4e1bfc7fea575553eb24865031501a4e351f51f3e7f3d8d3eb700597d146b  docs/specs/mcpb-checksums-wiring.py" | sha256sum -c - && python3 docs/specs/mcpb-checksums-wiring.py .github/workflows/registry.yml "name: Publish" "for short in" "pkg=\$(jq -r" "bash scripts/wait-npm-version.sh \"\$pkg\" \"\$version\"" "npm view \"\$pkg@\$version\" mcpName" "./mcp-publisher publish"'`

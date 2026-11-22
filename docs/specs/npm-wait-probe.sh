@@ -37,6 +37,7 @@ line=\$(sed -n "\${n}p" "$work/plan")
 case "\$line" in
   fail) echo "npm error code E404" >&2; exit 1 ;;
   ok:*) printf '%s\n' "\${line#ok:}" ;;
+  badrc:*) printf '%s\n' "\${line#badrc:}"; exit 1 ;;
 esac
 EOF
   cat > "$work/bin/sleep" <<EOF
@@ -88,8 +89,7 @@ run @stufently/yandex-direct-mcp 2.3.0 4 3
 expect_rcnz never
 expect_calls never 4
 expect_sleeps never 3 3
-grep -qF '::error' "$work/err" "$work/out" || fail never "no ::error annotation"
-cat "$work/err" "$work/out" | grep -qF '@stufently/yandex-direct-mcp@2.3.0' || fail never "message does not name pkg@version"
+grep '::error::' "$work/err" | grep -qF '@stufently/yandex-direct-mcp@2.3.0' || fail never "no ::error:: line naming pkg@version in stderr"
 
 # 3. Available at once: one call, no sleep.
 setup ok:2.3.0
@@ -115,6 +115,18 @@ setup ok: ok:2.3.0
 run @stufently/yandex-webmaster-mcp 2.3.0 5 1
 expect_rc0 empty-out
 expect_calls empty-out 2
+
+# 6b. The version printed by a failing npm (rc 1) is not success.
+setup badrc:2.3.0 ok:2.3.0
+run @stufently/yandex-webmaster-mcp 2.3.0 5 1
+expect_rc0 bad-rc
+expect_calls bad-rc 2
+
+# 6c. Leading and inner whitespace is NOT stripped: " 2.3.0" and "2.3. 0" are not "2.3.0".
+setup 'ok: 2.3.0' 'ok:2.3. 0'
+run @stufently/yandex-webmaster-mcp 2.3.0 2 1
+expect_rcnz inner-ws
+expect_calls inner-ws 2
 
 # 7. Trailing whitespace in npm output is tolerated.
 setup 'ok:2.3.0  '
